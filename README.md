@@ -92,7 +92,7 @@ service.call
 
 ### Example: Usage in a controller
 
-Mark a message as read. This should never fail, so we can use `#save!`. Note that `#save` is called by the controller. This is by convention, see (Conventions)[#conventions] below.
+Mark a message as read. This should never fail, so we can use `#save!`. Note that `#save` is called by the controller. This is by convention, see [Conventions](#conventions) below.
 
 ```ruby
 class MessagesController < ApplicationController
