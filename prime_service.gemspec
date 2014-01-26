@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.version       = PrimeService::VERSION
   spec.authors       = ["Tilo Dietrich"]
   spec.email         = ["tilodietrich@posteo.de"]
-  spec.summary       = "A gem for implementing Service Objects."
+  spec.summary       = "A gem for Service Objects."
   spec.description   = ""
   spec.homepage      = ""
   spec.license       = "MIT"
