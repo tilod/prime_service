@@ -5,6 +5,11 @@ module PrimeService
     call_with :foo, :bar
   end
 
+
+  class TestServiceWithoutParams < Service
+  end
+
+  
   class TestServiceWithFactory < Service
     call_with :foo, :bar
 
@@ -27,13 +32,6 @@ module PrimeService
   
 
   shared_examples_for :a_service_object do
-    describe ".call_with" do
-      it "defines attribute readers for the params" do
-        expect(test_service).to respond_to :foo
-        expect(test_service).to respond_to :bar
-      end
-    end
-
     describe ".call" do
       it "initializes the service with the factory method and calls it" do
         service_double = double :service_double
@@ -60,6 +58,13 @@ module PrimeService
       let(:test_class)   { TestService }
       let(:test_service) { test_class.for(:foo_value, :bar_value) }
 
+      describe ".call_with" do
+        it "defines attribute readers for the params" do
+          expect(test_service).to respond_to :foo
+          expect(test_service).to respond_to :bar
+        end
+      end
+
       describe ".for" do
         it "initializes the service" do
           expect(test_service).to be_a TestService
@@ -76,11 +81,25 @@ module PrimeService
       it_behaves_like :a_service_object
     end
 
+
+    describe "Service without params" do
+      let(:test_class)   { TestServiceWithoutParams }
+      let(:test_service) { test_class.new }
+
+      it_behaves_like :a_service_object
+    end
+
+    
     describe "Service with a factory which does the same as the default" do
       let(:test_class)   { TestServiceWithFactory }
       let(:test_service) { test_class.for(:subclass_1, :bar_value) }
 
-      it_behaves_like :a_service_object
+      describe ".call_with" do
+        it "defines attribute readers for the params" do
+          expect(test_service).to respond_to :foo
+          expect(test_service).to respond_to :bar
+        end
+      end
 
       describe ".for" do
         it "calls the factory method defined by .factory" do
@@ -94,6 +113,8 @@ module PrimeService
           expect(test_service.bar).to eq :bar_value
         end
       end
+
+      it_behaves_like :a_service_object
     end
   end
 end

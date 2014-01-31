@@ -5,7 +5,7 @@ module PrimeService
 #
 
     def self.call_with(*call_params)
-      define_method :__call_params__ do
+      define_method :_call_params_ do
         call_params
       end
 
@@ -29,7 +29,7 @@ module PrimeService
 
 
     def initialize(*params)
-      __call_params__.each_with_index do |attribute, index|
+      _call_params_.each_with_index do |attribute, index|
         instance_variable_set "@#{attribute}", params[index]
       end
     end
@@ -40,6 +40,14 @@ module PrimeService
 
     def call
       nil
+    end
+
+
+
+    private
+
+    def _call_params_
+      []
     end
   end
 end
