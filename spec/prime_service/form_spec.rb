@@ -2,6 +2,12 @@ require "spec_helper"
 
 module PrimeService
   shared_examples_for :a_form_object do
+
+#
+#   Form#submit
+#
+
+
     describe "#submit" do
       subject { form.submit(params) }
 
@@ -71,6 +77,10 @@ module PrimeService
       
       it_behaves_like :a_form_object
 
+#
+#   FeedbackForm.transient
+#
+
       describe ".transient" do
         it "defines a setter and a getter for the attribute" do
           form.subject = "Test Subject"
@@ -92,12 +102,20 @@ module PrimeService
         end
       end
 
+#
+#   FeedbackForm.validates
+#
+
       describe ".validates" do
         it "can use the validations of ActiveModel" do
           expect(form.valid?).to be_false
           expect(form.errors[:subject].size).to eq 1
         end
       end
+
+#
+#   FeedbackForm#assign
+#
 
 
       describe "#assign" do
@@ -147,6 +165,10 @@ module PrimeService
       let(:params) { Hash[headline: "Headline", content: "My Post"] }
 
       it_behaves_like :a_form_object
+
+#
+#   PostForm.model
+#
 
       describe ".model" do
         context "model type explicitly given" do
@@ -199,8 +221,12 @@ module PrimeService
             form = PostForm.new(post)
             expect(form.post.headline).to eq "passed as argument"
           end
-        end        
+        end
       end
+
+#
+#   PostForm.persistent
+#
 
       describe ".persistent" do
         it "defines a setters and a getters for the attributes" do
@@ -225,12 +251,20 @@ module PrimeService
         end
       end
 
+#
+#   PostForm.validates
+#
+
       describe ".validates" do
         it "can use the validations of ActiveModel" do
           expect(form.valid?).to be_false
           expect(form.errors[:headline].size).to eq 1
         end
       end
+
+#
+#   PostForm#assign
+#
 
       describe "#assign" do
         subject { form.assign(params) }
@@ -248,6 +282,10 @@ module PrimeService
         end
       end
 
+#
+#   PostForm#process
+#
+
       describe "#process" do
         subject { form.process }
 
@@ -256,6 +294,10 @@ module PrimeService
           subject
         end
       end
+
+#
+#   PostForm#persist
+#
 
       describe "#persist" do
         subject { form.persist }
@@ -273,7 +315,6 @@ module PrimeService
           before { allow(form.model).to receive(:save).and_return(false) }
           it { should be_false }
         end
-
       end
     end
 
@@ -281,23 +322,225 @@ module PrimeService
 
 
     class ::User
-      attr_reader :email
+      attr_accessor :email
 
       def save
         true
       end
     end
 
-    class ::Company
-      attr_reader :name
+    class ::Enterprise
+      attr_accessor :name
 
       def save
         true
       end
+    end
+
+    class UserCompanyForm < Form
+      models :user, company: ::Enterprise
+
+      persistent :email,        on: :user
+      persistent :company_name, on: :company, as: :name
+
+      validates :email, presence: true
+      validates :company_name, presence: true
+    end
+
+    class UserCompanyFormOnlySymbols < Form
+      models :user, :enterprise
+    end
+
+    class UserCompanyFormTwoHashes < Form
+      models user: ::User, company: ::Enterprise
     end
 
     describe "Form for multiple models" do
+      let(:form)   { UserCompanyForm.new }
+      let(:params) { Hash[email:        "test@example.com",
+                          password:     "123456",
+                          company_name: "ACME"] }
 
+      it_behaves_like :a_form_object
+
+#
+#   UserCompanyForm.models
+#
+
+      describe ".models" do
+        context "one model type explicitly given, the other has to be "\
+                "inferred" do
+          it "defines getters for the models" do
+            expect(form.user).to be_a User
+            expect(form.company).to be_an Enterprise
+          end
+
+          it "defines the initializer to build the models when called with "\
+             "no arguments" do
+            expect(form.user.email).to eq nil
+            expect(form.company.name).to eq nil
+          end
+
+          it "defines the initializer to assign all models to instance "\
+             "variables when passed as arguments" do
+            user = User.new.tap do |user|
+              user.email = "all@example.com"
+            end
+            company = Enterprise.new.tap do |company|
+              company.name = "ALL"
+            end
+            form = UserCompanyForm.new(user: user, company: company)
+            expect(form.user.email).to eq "all@example.com"
+            expect(form.company.name).to eq "ALL"
+          end
+
+          it "defines the initializer to assign some models to instance "\
+             "variables when passed as arguments" do
+            user = User.new.tap do |user|
+              user.email = "some@example.com"
+            end
+            form = UserCompanyForm.new(user: user)
+            expect(form.user.email).to eq "some@example.com"
+            expect(form.company.name).to eq nil
+          end
+        end
+
+        context "all models types have to be inferred" do
+          let(:form) { UserCompanyFormOnlySymbols.new }
+
+          it "defines getters for the models" do
+            expect(form.user).to be_a User
+            expect(form.enterprise).to be_a Enterprise
+          end
+
+          it "defines the initializer to build the models when called with "\
+             "no arguments" do
+            expect(form.user.email).to eq nil
+            expect(form.enterprise.name).to eq nil
+          end
+
+          it "defines the initializer to assign all models to instance "\
+             "variables when passed as arguments" do
+            user = User.new.tap do |user|
+              user.email = "all@example.com"
+            end
+            company = Enterprise.new.tap do |company|
+              company.name = "ALL"
+            end
+            form = UserCompanyFormOnlySymbols.new(user: user,
+                                                  enterprise: company)
+            expect(form.user.email).to eq "all@example.com"
+            expect(form.enterprise.name).to eq "ALL"
+          end
+
+          it "defines the initializer to assign some models to instance "\
+             "variables when passed as arguments" do
+            user = User.new.tap do |user|
+              user.email = "some@example.com"
+            end
+            form = UserCompanyFormOnlySymbols.new(user: user)
+            expect(form.user.email).to eq "some@example.com"
+            expect(form.enterprise.name).to eq nil
+          end
+        end
+
+        context "all models types explicitly given" do
+          let(:form) { UserCompanyFormTwoHashes.new }
+
+          it "defines getters for the models" do
+            expect(form.user).to be_a User
+            expect(form.company).to be_an Enterprise
+          end
+
+          it "defines the initializer to build the models when called with "\
+             "no arguments" do
+            expect(form.user.email).to eq nil
+            expect(form.company.name).to eq nil
+          end
+
+          it "defines the initializer to assign all models to instance "\
+             "variables when passed as arguments" do
+            user = User.new.tap do |user|
+              user.email = "all@example.com"
+            end
+            company = Enterprise.new.tap do |company|
+              company.name = "ALL"
+            end
+            form = UserCompanyFormTwoHashes.new(user: user, company: company)
+            expect(form.user.email).to eq "all@example.com"
+            expect(form.company.name).to eq "ALL"
+          end
+
+          it "defines the initializer to assign some models to instance "\
+             "variables when passed as arguments" do
+            user = User.new.tap do |user|
+              user.email = "some@example.com"
+            end
+            form = UserCompanyFormTwoHashes.new(user: user)
+            expect(form.user.email).to eq "some@example.com"
+            expect(form.company.name).to eq nil
+          end
+        end
+      end
+
+#
+#   UserCompanyForm.persistent
+#
+
+      describe ".persistent" do
+        it "defines a setters and a getters for the attributes" do
+          form.email        = "test@example.com"
+          form.company_name = "ACME"
+          expect(form.email).to eq "test@example.com"
+          expect(form.company_name).to eq "ACME"
+        end
+
+        it "delegates the setters to the models" do
+          form.email        = "test@example.com"
+          form.company_name = "ACME"
+          expect(form.user.email).to eq "test@example.com"
+          expect(form.company.name).to eq "ACME"
+        end
+
+        it "delegates the getters to the models" do
+          form.user.email  = "test@example.com"
+          form.company.name = "ACME"
+          expect(form.email).to eq "test@example.com"
+          expect(form.company_name).to eq "ACME"
+        end
+      end
+
+#
+#   UserCompanyForm.validates
+#
+
+      describe ".validates" do
+        it "can use the validations of ActiveModel" do
+          expect(form.valid?).to be_false
+          expect(form.errors[:email].size).to eq 1
+          expect(form.errors[:company_name].size).to eq 1
+        end
+      end
+
+#
+#   UserCompanyForm#assign
+#
+
+      describe "#assign" do
+        subject { form.assign(params) }
+
+        it "assigns the params to the attributes" do
+          subject
+          expect(form.email).to eq "test@example.com"
+          expect(form.company_name).to eq "ACME"
+        end
+
+        it "assigns the params to the models" do
+          subject
+          expect(form.user.email).to eq "test@example.com"
+          expect(form.company.name).to eq "ACME"
+        end
+      end
     end
 
 
