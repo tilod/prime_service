@@ -98,7 +98,7 @@ module PrimeService
         send(on).send("#{as}=", value)
       end
 
-      _attribute_names_ << attribute_name
+      attributes << attribute_name
     end
 
     
@@ -106,15 +106,15 @@ module PrimeService
       options[:type] ||= String
       attribute attribute_name, options[:type], options
 
-      _attribute_names_ << attribute_name
+      attributes << attribute_name
     end
 
 #
 #   class methods
 #
 
-    def self._attribute_names_
-      @_attribute_names_ ||= []
+    def self.attributes
+      @_attributes_ ||= []
     end
 
 #
@@ -156,7 +156,7 @@ module PrimeService
 
     
     def attribute_names
-      self.class._attribute_names_
+      self.class.attributes
     end
   end
 end

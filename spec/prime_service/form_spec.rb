@@ -114,6 +114,17 @@ module PrimeService
       end
 
 #
+#   FeedbackForm.attributes
+#
+
+      describe ".attributes" do
+        it "returns an array with all attribute names" do
+          expect(FeedbackForm.attributes)
+            .to match_array [:subject, :grade, :feedback]
+        end
+      end
+
+#
 #   FeedbackForm#attributes=
 #
 
@@ -312,6 +323,17 @@ module PrimeService
         it "can use the validations of ActiveModel" do
           expect(form.valid?).to be_false
           expect(form.errors[:headline].size).to eq 1
+        end
+      end
+
+#
+#   PostForm.attributes
+#
+
+      describe ".attributes" do
+        it "returns an array with all attribute names" do
+          expect(PostForm.attributes)
+            .to match_array [:headline, :content]
         end
       end
 
@@ -655,6 +677,17 @@ module PrimeService
       end
 
 #
+#   UserCompanyForm.attributes
+#
+
+      describe ".attributes" do
+        it "returns an array with all attribute names" do
+          expect(UserCompanyForm.attributes)
+            .to match_array [:email, :company_name]
+        end
+      end
+
+#
 #   UserCompanyForm#attributes=
 #
 
@@ -725,6 +758,17 @@ module PrimeService
       it "has the validations of the derived form" do
         expect(form.valid?).to be_false
         expect(form.errors[:category].size).to eq 1
+      end
+
+#
+#   CategorizedPostForm.attributes
+#
+
+      describe ".attributes" do
+        it "returns an array with all attribute names" do
+          expect(CategorizedPostForm.attributes)
+            .to match_array [:headline, :content, :category]
+        end
       end
     end
   end
