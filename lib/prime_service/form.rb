@@ -9,24 +9,39 @@ module PrimeService
 
     def self.model(model)
       if model.kind_of? Hash
-        model_name  = model.keys.first
-        model_class = model.values.first
+        lambda_or_class = model.values.first
+
+        model_name = model.keys.first
+        model_new  = if lambda_or_class.respond_to? :call
+          lambda_or_class
+        else
+          ->{ lambda_or_class.new }
+        end
       else
-        model_name  = model
-        model_class = model.to_s.camelize.constantize
+        model_name = model
+        model_new  = ->{ model.to_s.camelize.constantize.new }
       end
 
-      define_method model_name do
-        instance_variable_get :@model
+      mod = Module.new do
+        define_method model_name do
+          instance_variable_get :@model
+        end
+
+        define_method :build_model, model_new
+
+        define_method "build_#{model_name}" do
+          build_model
+        end
+
+        define_method :initialize do |model = nil|
+          @model = model || build_model
+
+          models << @model
+        end
+
+        attr_reader :model
       end
-
-      define_method :initialize do |model = nil|
-        @model = model || model_class.new
-
-        models << @model
-      end
-
-      attr_reader :model
+      include mod
     end
 
 
@@ -36,29 +51,38 @@ module PrimeService
         model_hash  = {}
       end
 
-      hash = {}
+      model_new = {}
 
       model_names.each do |model_name|
-        hash[model_name] = model_name.to_s.camelize.constantize
+        model_new[model_name] = ->{ model_name.to_s.camelize.constantize.new }
       end
-      model_hash.each do |model_name, model_class|
-        hash[model_name] = model_class
-      end
-
-      hash.each do |model_name, model_class|
-        define_method model_name do
-          instance_variable_get :"@#{model_name}"
+      model_hash.each do |model_name, model_class_or_lambda|
+        model_new[model_name] = if model_class_or_lambda.respond_to? :call
+          model_class_or_lambda
+        else
+          ->{ model_class_or_lambda.new }
         end
       end
 
-      define_method :initialize do |params = {}|
-        hash.each do |model_name, model_class|
-          model_instance = params[model_name] || model_class.new
-          instance_variable_set :"@#{model_name}", model_instance
+      mod = Module.new do
+        model_new.each do |model_name, model_lambda|
+          define_method model_name do
+            instance_variable_get :"@#{model_name}"
+          end
 
-          models << model_instance
+          define_method "build_#{model_name}", model_lambda
+        end
+
+        define_method :initialize do |params = {}|
+          model_new.each do |model_name, model_lambda|
+            model_instance = params[model_name] || send("build_#{model_name}")
+            instance_variable_set :"@#{model_name}", model_instance
+
+            models << model_instance
+          end
         end
       end
+      include mod
     end
 
     
@@ -98,13 +122,13 @@ module PrimeService
 #
 
     def submit(params = nil)
-      assign(params) if params
+      self.attributes = params if params
 
       valid? and process
     end
 
 
-    def assign(params)
+    def attributes=(params)
       attribute_names.each do |attribute|
         self.send "#{attribute}=", params[attribute]
       end

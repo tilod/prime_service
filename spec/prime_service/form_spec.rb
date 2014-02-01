@@ -12,8 +12,8 @@ module PrimeService
       subject { form.submit(params) }
 
       context "when called with params" do
-        it "calls #assign" do
-          expect(form).to receive(:assign).with(params).and_call_original
+        it "calls #attributes=" do
+          expect(form).to receive(:attributes=).with(params).and_call_original
           subject
         end
       end
@@ -21,8 +21,8 @@ module PrimeService
       context "when called without params" do
         subject { form.submit }
 
-        it "does not call #assign" do
-          expect(form).not_to receive(:assign).with(params)
+        it "does not call #attributes=" do
+          expect(form).not_to receive(:attributes=).with(params)
           subject
         end
       end
@@ -114,12 +114,12 @@ module PrimeService
       end
 
 #
-#   FeedbackForm#assign
+#   FeedbackForm#attributes=
 #
 
 
-      describe "#assign" do
-        subject { form.assign(params) }
+      describe "#attributes=" do
+        subject { form.attributes = params }
 
         it "assigns the params to the attributes" do
           subject
@@ -134,17 +134,17 @@ module PrimeService
 
     class ::Post
       attr_accessor :headline, :content
-
-      def save
-        true
-      end
+      def save; true; end
     end
+
     class ::PostOther
       attr_accessor :other
+      def save; true; end
+    end
 
-      def save
-        true
-      end
+    class ::PostLambda
+      attr_accessor :text
+      def save; true; end
     end
 
     class PostForm < Form
@@ -160,6 +160,10 @@ module PrimeService
       model post: ::PostOther
     end
 
+    class PostWithLambdaNewForm < Form
+      model post: ->{ PostLambda.new.tap { |post| post.text = "lambda" } }
+    end
+
     describe "Form for one model" do
       let(:form)   { PostForm.new }
       let(:params) { Hash[headline: "Headline", content: "My Post"] }
@@ -171,6 +175,37 @@ module PrimeService
 #
 
       describe ".model" do
+        context "model type has to be inferred" do
+          let(:form) { PostForm.new }
+
+          it "defines #model which returns the model instance" do
+            expect(form.model).to be_a Post
+          end
+
+          it "defines a getter for the model (equivalent to #model)" do
+            expect(form.post).to be_a Post
+          end
+
+          it "defines the initializer to build the model when called with "\
+             "no arguments" do
+            expect(form.post.headline).to eq nil
+          end
+
+          it "defines the initializer to assign the model to an instance "\
+             "variable when passed as argument" do
+            post = Post.new.tap do |post|
+              post.headline = "passed as argument"
+            end
+            form = PostForm.new(post)
+            expect(form.post.headline).to eq "passed as argument"
+          end
+
+          it "defines a method #build_model that instanciates a new model (or "\
+             "calls the construstion lambda)" do
+            expect(form.build_model).to be_a Post
+          end
+        end
+
         context "model type explicitly given" do
           let(:form) { PostFormWithExplicitModelType.new }
 
@@ -195,22 +230,27 @@ module PrimeService
             form = PostFormWithExplicitModelType.new(post)
             expect(form.post.other).to eq "passed as argument"
           end
+
+          it "defines a method #build_model that instanciates a new model (or "\
+             "calls the construstion lambda)" do
+            expect(form.build_model).to be_a PostOther
+          end
         end
 
-        context "model type has to be inferred" do
-          let(:form) { PostForm.new }
+        context "model should be initialized with lambda" do
+          let(:form) { PostWithLambdaNewForm.new }
 
           it "defines #model which returns the model instance" do
-            expect(form.model).to be_a Post
+            expect(form.model).to be_a PostLambda
           end
 
           it "defines a getter for the model (equivalent to #model)" do
-            expect(form.post).to be_a Post
+            expect(form.post).to be_a PostLambda
           end
 
           it "defines the initializer to build the model when called with "\
-             "no arguments" do
-            expect(form.post.headline).to eq nil
+             "no arguments and calls the lambda" do
+            expect(form.post.text).to eq "lambda"
           end
 
           it "defines the initializer to assign the model to an instance "\
@@ -218,8 +258,16 @@ module PrimeService
             post = Post.new.tap do |post|
               post.headline = "passed as argument"
             end
-            form = PostForm.new(post)
+            form = PostWithLambdaNewForm.new(post)
             expect(form.post.headline).to eq "passed as argument"
+          end
+
+          it "defines a method #build_model that instanciates a new model (or "\
+             "calls the construction lambda)" do
+            new_model = form.build_model
+
+            expect(new_model).to be_a PostLambda
+            expect(new_model.text).to eq "lambda"
           end
         end
       end
@@ -263,11 +311,11 @@ module PrimeService
       end
 
 #
-#   PostForm#assign
+#   PostForm#attributes=
 #
 
-      describe "#assign" do
-        subject { form.assign(params) }
+      describe "#attributes=" do
+        subject { form.attributes = params }
 
         it "assigns the params to the attributes" do
           subject
@@ -323,18 +371,22 @@ module PrimeService
 
     class ::User
       attr_accessor :email
-
-      def save
-        true
-      end
+      def save; true; end
     end
 
     class ::Enterprise
       attr_accessor :name
+      def save; true; end
+    end
 
-      def save
-        true
+    class ::Account
+      attr_accessor :user
+
+      def initialize
+        @user = ::User.new.tap { |user| user.email = "account@example.com" }
       end
+
+      def save; true; end
     end
 
     class UserCompanyForm < Form
@@ -353,6 +405,10 @@ module PrimeService
 
     class UserCompanyFormTwoHashes < Form
       models user: ::User, company: ::Enterprise
+    end
+
+    class UserCompanyFormLambda < Form
+      models account: Account, user: ->{ account.user }
     end
 
     describe "Form for multiple models" do
@@ -403,6 +459,12 @@ module PrimeService
             expect(form.user.email).to eq "some@example.com"
             expect(form.company.name).to eq nil
           end
+
+          it "defines #build_[model_name] methods that instanciate new models "\
+             "(or call the construstion lambdas)" do
+            expect(form.build_user).to be_a User
+            expect(form.build_company).to be_an Enterprise
+          end
         end
 
         context "all models types have to be inferred" do
@@ -442,6 +504,12 @@ module PrimeService
             expect(form.user.email).to eq "some@example.com"
             expect(form.enterprise.name).to eq nil
           end
+
+          it "defines #build_[model_name] methods that instanciate new models "\
+             "(or call the construstion lambdas)" do
+            expect(form.build_user).to be_a User
+            expect(form.build_enterprise).to be_an Enterprise
+          end
         end
 
         context "all models types explicitly given" do
@@ -479,6 +547,65 @@ module PrimeService
             form = UserCompanyFormTwoHashes.new(user: user)
             expect(form.user.email).to eq "some@example.com"
             expect(form.company.name).to eq nil
+          end
+
+          it "defines #build_[model_name] methods that instanciate new models "\
+             "(or call the construstion lambdas)" do
+            expect(form.build_user).to be_a User
+            expect(form.build_company).to be_an Enterprise
+          end
+        end
+
+        context "a model loads data from the other (with the lambda)" do
+          let(:form) { UserCompanyFormLambda.new }
+
+          it "defines getters for the models" do
+            expect(form.account).to be_an Account
+            expect(form.user).to be_a User
+          end
+
+          it "defines the initializer to build the models when called with "\
+             "no arguments, calling the lambda" do
+            expect(form.account.user).to eq form.user
+            expect(form.user.email).to eq "account@example.com"
+          end
+
+          it "defines the initializer to assign all models to instance "\
+             "variables when passed as arguments" do
+            account = Account.new.tap do |account|
+              account.user = :dummy_user
+            end
+            user = User.new.tap do |user|
+              user.email = "all@example.com"
+            end
+            form = UserCompanyFormLambda.new(account: account, user: user)
+            expect(form.account.user).to eq :dummy_user
+            expect(form.user.email).to eq "all@example.com"
+          end
+
+          it "defines the initializer to assign some models to instance "\
+             "variables when passed as arguments" do
+            user = User.new.tap do |user|
+              user.email = "some@example.com"
+            end
+            form = UserCompanyFormLambda.new(user: user)
+            expect(form.user.email).to eq "some@example.com"
+            expect(form.account.user.email).to eq "account@example.com"
+          end
+
+          it "defines #build_[model_name] methods that instanciate new models "\
+             "(or call the construction lambdas)" do
+            new_account = form.build_account
+            expect(new_account).to be_an Account
+
+            new_account.user = User.new.tap do |user|
+              user.email = "build_user@example.com"
+            end
+
+            form = UserCompanyFormLambda.new(account: new_account)
+            new_user = form.build_user
+            expect(new_user).to be_a User
+            expect(new_user.email).to eq "build_user@example.com"
           end
         end
       end
@@ -523,11 +650,11 @@ module PrimeService
       end
 
 #
-#   UserCompanyForm#assign
+#   UserCompanyForm#attributes=
 #
 
-      describe "#assign" do
-        subject { form.assign(params) }
+      describe "#attributes=" do
+        subject { form.attributes = params }
 
         it "assigns the params to the attributes" do
           subject
