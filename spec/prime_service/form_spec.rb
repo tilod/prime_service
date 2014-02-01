@@ -727,13 +727,13 @@ module PrimeService
       validates :category, presence: true
     end    
 
-    describe "Derived form" do
+    describe "Inherited form" do
       let(:form)   { CategorizedPostForm.new }
       let(:params) { Hash[headline: "Headline", content: "My Post"] }
 
       it_behaves_like :a_form_object
 
-      it "has the model of the derived class" do
+      it "has the model of the inherited class" do
         expect(form.model).to be_a ::CategorizedPost
       end
 
@@ -745,7 +745,7 @@ module PrimeService
         expect(form.content).to eq "Test Content"
       end
 
-      it "has the attributes of the derived form" do
+      it "has the attributes of the inherited form" do
         form.category = "Test Category"
         expect(form.category).to eq "Test Category"
       end
@@ -755,7 +755,7 @@ module PrimeService
         expect(form.errors[:headline].size).to eq 1
       end
 
-      it "has the validations of the derived form" do
+      it "has the validations of the inherited form" do
         expect(form.valid?).to be_false
         expect(form.errors[:category].size).to eq 1
       end

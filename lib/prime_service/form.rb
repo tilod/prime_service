@@ -98,7 +98,7 @@ module PrimeService
         send(on).send("#{as}=", value)
       end
 
-      attributes << attribute_name
+      _own_attributes_ << attribute_name
     end
 
     
@@ -106,15 +106,24 @@ module PrimeService
       options[:type] ||= String
       attribute attribute_name, options[:type], options
 
-      attributes << attribute_name
+      _own_attributes_ << attribute_name
     end
 
 #
 #   class methods
 #
 
-    def self.attributes
-      @_attributes_ ||= []
+    def self.attributes(attrs = [])
+      if superclass == ::PrimeService::Form
+        _own_attributes_
+      else
+        _own_attributes_ + superclass.attributes(attrs)
+      end
+    end
+
+
+    def self._own_attributes_
+      @_own_attributes_ ||= []
     end
 
 #
