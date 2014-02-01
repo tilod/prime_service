@@ -204,6 +204,11 @@ module PrimeService
              "calls the construstion lambda)" do
             expect(form.build_model).to be_a Post
           end
+
+          it "defines a method #build_[model_name] that instanciates a new "\
+             "model (or calls the construstion lambda)" do
+            expect(form.build_post).to be_a Post
+          end
         end
 
         context "model type explicitly given" do
