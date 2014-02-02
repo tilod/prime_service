@@ -71,6 +71,10 @@ module PrimeService
       validates :subject, presence: true
     end
 
+    class NamedFeedbackForm < Form
+      form_name "SetByFormName"
+    end
+
     describe "Form without a model" do
       let(:form)   { FeedbackForm.new }
       let(:params) { Hash[subject: "Subject", grade: 2] }
@@ -125,6 +129,32 @@ module PrimeService
       end
 
 #
+#   FeedbackForm.model_name
+#
+
+      describe ".model_name" do
+        context "when .form_name is not used to set the name" do
+          subject { FeedbackForm.model_name }
+
+          it { should be_an ActiveModel::Name }
+          
+          it "is derived from the class name" do
+            should eq "Feedback"
+          end
+        end
+
+        context "when .form_name is used to set the name" do
+          subject { NamedFeedbackForm.model_name }
+
+          it { should be_an ActiveModel::Name }
+
+          it "uses the set name" do
+            should eq "SetByFormName"
+          end
+        end
+      end
+
+#
 #   FeedbackForm#attributes=
 #
 
@@ -175,6 +205,15 @@ module PrimeService
       model post: ->{ PostLambda.new.tap { |post| post.text = "lambda" } }
     end
 
+    class UnnamedPostForm < Form
+      model :post
+    end
+
+    class NamedPostForm < Form
+      form_name "SetByFormName"
+      model     :post
+    end
+
     describe "Form for one model" do
       let(:form)   { PostForm.new }
       let(:params) { Hash[headline: "Headline", content: "My Post"] }
@@ -186,6 +225,12 @@ module PrimeService
 #
 
       describe ".model" do
+        it "sets the main model to the model" do
+          expect(PostForm).to receive(:main_model).with(:model)
+                          .and_call_original
+          PostForm.model(:post)
+        end
+
         context "model type has to be inferred" do
           let(:form) { PostForm.new }
 
@@ -417,7 +462,8 @@ module PrimeService
     end
 
     class UserCompanyForm < Form
-      models :user, company: ::Enterprise
+      models     :user, company: ::Enterprise
+      main_model :user
 
       persistent :email,        on: :user
       persistent :company_name, on: :company, as: :name
@@ -634,6 +680,37 @@ module PrimeService
             expect(new_user).to be_a User
             expect(new_user.email).to eq "build_user@example.com"
           end
+        end
+      end
+
+#
+#   UserCompanyForm.main_model
+#
+
+      describe ".main_model" do
+        it "delegates #persisted? to the set main model" do
+          expect(form.user).to receive(:persisted?).with(no_args)
+          form.persisted?
+        end
+
+        it "delegates #to_key to the set main model" do
+          expect(form.user).to receive(:to_key).with(no_args)
+          form.to_key
+        end
+
+        it "delegates #to_param to the set main model" do
+          expect(form.user).to receive(:to_param).with(no_args)
+          form.to_param
+        end
+
+        it "delegates #to_model to the set main model" do
+          expect(form.user).to receive(:to_model).with(no_args)
+          form.to_model
+        end
+
+        it "delegates #id to the set main model" do
+          expect(form.user).to receive(:id).with(no_args)
+          form.id
         end
       end
 

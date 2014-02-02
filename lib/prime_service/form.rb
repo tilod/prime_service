@@ -7,6 +7,12 @@ module PrimeService
 #   macro class methods
 #
 
+    def self.form_name(name, namespace = nil)
+      @_form_name_      = name.to_s
+      @_form_namespace_ = namespace
+    end
+
+
     def self.model(model)
       if model.kind_of? Hash
         lambda_or_class = model.values.first
@@ -42,6 +48,8 @@ module PrimeService
         attr_reader :model
       end
       include mod
+
+      main_model(:model)
     end
 
 
@@ -85,6 +93,11 @@ module PrimeService
       include mod
     end
 
+
+    def self.main_model(model_name)
+      delegate :persisted?, :to_key, :to_param, :to_model, :id, to: model_name
+    end
+
     
     def self.persistent(attribute_name, options = {})
       on = options.has_key?(:on) ? options[:on] : :model
@@ -113,12 +126,25 @@ module PrimeService
 #   class methods
 #
 
+    def self.model_name
+      @_model_name_ ||=
+        if @_form_name_
+          ActiveModel::Name.new(self, @_form_namespace_, @_form_name_)
+        else
+          base_name = self.name.demodulize
+          base_name.gsub!(/Form$/, "") unless base_name == "Form"
+          ActiveModel::Name.new(self, nil, base_name)
+        end
+    end
+
+
     def self.attributes(attrs = [])
-      if superclass == ::PrimeService::Form
-        _own_attributes_
-      else
-        _own_attributes_ + superclass.attributes(attrs)
-      end
+      @_all_attributes_ ||=
+        if superclass == ::PrimeService::Form
+          _own_attributes_
+        else
+          _own_attributes_ + superclass.attributes(attrs)
+        end
     end
 
 
