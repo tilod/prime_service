@@ -358,6 +358,12 @@ module PrimeService
           expect(form.headline).to eq "Test Getter"
           expect(form.content).to eq "Test Content"
         end
+
+        it "defines #model_for_[attribute_name] that returns the model for "\
+           "the attribute" do
+          expect(form.model_for_headline).to eq form.model
+          expect(form.model_for_content).to eq form.model
+        end
       end
 
 #
@@ -703,11 +709,6 @@ module PrimeService
           form.to_param
         end
 
-        it "delegates #to_model to the set main model" do
-          expect(form.user).to receive(:to_model).with(no_args)
-          form.to_model
-        end
-
         it "delegates #id to the set main model" do
           expect(form.user).to receive(:id).with(no_args)
           form.id
@@ -738,6 +739,12 @@ module PrimeService
           form.company.name = "ACME"
           expect(form.email).to eq "test@example.com"
           expect(form.company_name).to eq "ACME"
+        end
+
+        it "defines #model_for_[attribute_name] that returns the model for "\
+           "the attribute" do
+          expect(form.model_for_email).to eq form.user
+          expect(form.model_for_company_name).to eq form.company
         end
       end
 

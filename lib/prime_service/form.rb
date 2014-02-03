@@ -95,7 +95,7 @@ module PrimeService
 
 
     def self.main_model(model_name)
-      delegate :persisted?, :to_key, :to_param, :to_model, :id, to: model_name
+      delegate :persisted?, :to_key, :to_param, :id, to: model_name
     end
 
     
@@ -111,6 +111,10 @@ module PrimeService
         send(on).send("#{as}=", value)
       end
 
+      define_method "model_for_#{attribute_name}" do
+        send(on)
+      end
+
       _own_attributes_ << attribute_name
     end
 
@@ -120,6 +124,11 @@ module PrimeService
       attribute attribute_name, options[:type], options
 
       _own_attributes_ << attribute_name
+    end
+
+
+    def self.validates_uniqueness_of(attribute_name, options = true)
+      validates attribute_name, uniqueness: options
     end
 
 #
