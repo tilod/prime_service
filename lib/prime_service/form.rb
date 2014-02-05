@@ -3,6 +3,10 @@ module PrimeService
     include ActiveModel::Model
     include Virtus.model
 
+
+    delegate :persisted?, :to_key, :to_param, :id,
+              to: :main_model, allow_nil: true
+
 #
 #   macro class methods
 #
@@ -13,95 +17,29 @@ module PrimeService
     end
 
 
-    def self.model(model)
-      if model.kind_of? Hash
-        lambda_or_class = model.values.first
-
-        model_name = model.keys.first
-        model_new  = if lambda_or_class.respond_to? :call
-          lambda_or_class
-        else
-          ->{ lambda_or_class.new }
-        end
-      else
-        model_name = model
-        model_new  = ->{ model.to_s.camelize.constantize.new }
-      end
+    def self.model(model_name, model_class = nil, main: false)
+      model_class ||= model_name.to_s.camelize.constantize.new
 
       mod = Module.new do
         define_method model_name do
-          instance_variable_get :@model
+          instance_variable_get :"@#{model_name}" or
+          instance_variable_set :"@#{model_name}", send("build_#{model_name}")
         end
-
-        define_method :build_model, model_new
 
         define_method "build_#{model_name}" do
-          build_model
+          model_class.new
         end
 
-        define_method :initialize do |model = nil|
-          @model = model || build_model
-
-          models << @model
+        if main
+          define_method :main_model_name do
+            model_name
+          end
+          private :main_model_name
         end
-
-        attr_reader :model
       end
       include mod
 
-      main_model(:model)
-    end
-
-
-    def self.models(*model_names, model_hash)
-      unless model_hash.kind_of? Hash
-        model_names << model_hash
-        model_hash  = {}
-      end
-
-      model_new = {}
-
-      model_names.each do |model_name|
-        model_new[model_name] = ->{ model_name.to_s.camelize.constantize.new }
-      end
-      model_hash.each do |model_name, model_class_or_lambda|
-        model_new[model_name] = if model_class_or_lambda.respond_to? :call
-          model_class_or_lambda
-        elsif model_class_or_lambda.respond_to? :new
-          ->{ model_class_or_lambda.new }
-        else
-          false
-        end
-      end
-
-      mod = Module.new do
-        model_new.each do |model_name, model_lambda|
-          define_method model_name do
-            instance_variable_get :"@#{model_name}"
-          end
-          
-          define_method "build_#{model_name}", model_lambda if model_lambda
-        end
-
-        define_method :initialize do |params = {}|
-          model_new.each do |model_name, model_lambda|
-            model_instance = params[model_name]
-            
-            if model_lambda
-              model_instance ||= send("build_#{model_name}")
-              models << model_instance
-            end
-
-            instance_variable_set :"@#{model_name}", model_instance
-          end
-        end
-      end
-      include mod
-    end
-
-
-    def self.main_model(model_name)
-      delegate :persisted?, :to_key, :to_param, :id, to: model_name
+      _own_models_ << model_name
     end
 
     
@@ -125,9 +63,8 @@ module PrimeService
     end
 
     
-    def self.transient(attribute_name, options = {})
-      options[:type] ||= String
-      attribute attribute_name, options[:type], options
+    def self.transient(attribute_name, type = String, options = {})
+      attribute attribute_name, type, options
 
       _own_attributes_ << attribute_name
     end
@@ -163,13 +100,37 @@ module PrimeService
     end
 
 
+    def self.models(attrs = [])
+      @_all_models_ ||=
+        if superclass == ::PrimeService::Form
+          _own_models_
+        else
+          _own_models_ + superclass.models(attrs)
+        end
+    end
+
+
     def self._own_attributes_
       @_own_attributes_ ||= []
+    end
+
+
+    def self._own_models_
+      @_own_models_ ||= []
     end
 
 #
 #   instance methods
 #
+
+    def initialize(model = nil, models = {})
+      instance_variable_set :"@#{self.class._main_model_name_}" if model
+      
+      models.each do |model_name, model|
+        instance_variable_set :"@#{model_name}", model
+      end
+    end
+
 
     def submit(params = nil)
       self.attributes = params if params
@@ -194,6 +155,11 @@ module PrimeService
       models.map(&:save).all?
     end
 
+
+    def main_model
+      @main_model ||= send(main_model_name)
+    end
+
 #
 #   private instance methods
 #
@@ -201,12 +167,29 @@ module PrimeService
     private
 
     def models
-      @models ||= []
+      @_models_ ||= self.class.models.map { |model_name| send(model_name) }
     end
 
     
     def attribute_names
-      self.class.attributes
+      @_attribute_names_ ||= self.class.attributes
+    end
+
+
+    def model_names
+      @_model_names_ ||= self.class.models
+    end
+
+
+    def main_model_name
+      @_main_model_name_ ||=
+      if model_names.empty?
+        raise Error, "No models defined"
+      elsif model_names.size > 1
+        raise Error, "Multiple models defined but no model set as main model."
+      else
+        model_names.first
+      end
     end
   end
 end
