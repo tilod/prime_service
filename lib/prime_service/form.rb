@@ -157,7 +157,7 @@ module PrimeService
 
 
     def main_model
-      @main_model ||= send(main_model_name)
+      @main_model ||= (main_model_name && send(main_model_name))
     end
 
 #
@@ -182,14 +182,7 @@ module PrimeService
 
 
     def main_model_name
-      @_main_model_name_ ||=
-      if model_names.empty?
-        raise Error, "No models defined"
-      elsif model_names.size > 1
-        raise Error, "Multiple models defined but no model set as main model."
-      else
-        model_names.first
-      end
+      @_main_model_name_ ||= (model_names.size != 1 ? nil : model_names.first)
     end
   end
 end
