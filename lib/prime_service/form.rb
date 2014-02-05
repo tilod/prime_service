@@ -67,8 +67,10 @@ module PrimeService
       model_hash.each do |model_name, model_class_or_lambda|
         model_new[model_name] = if model_class_or_lambda.respond_to? :call
           model_class_or_lambda
-        else
+        elsif model_class_or_lambda.respond_to? :new
           ->{ model_class_or_lambda.new }
+        else
+          false
         end
       end
 
@@ -77,16 +79,20 @@ module PrimeService
           define_method model_name do
             instance_variable_get :"@#{model_name}"
           end
-
-          define_method "build_#{model_name}", model_lambda
+          
+          define_method "build_#{model_name}", model_lambda if model_lambda
         end
 
         define_method :initialize do |params = {}|
           model_new.each do |model_name, model_lambda|
-            model_instance = params[model_name] || send("build_#{model_name}")
-            instance_variable_set :"@#{model_name}", model_instance
+            model_instance = params[model_name]
+            
+            if model_lambda
+              model_instance ||= send("build_#{model_name}")
+              models << model_instance
+            end
 
-            models << model_instance
+            instance_variable_set :"@#{model_name}", model_instance
           end
         end
       end
@@ -185,7 +191,7 @@ module PrimeService
 
 
     def persist
-      models.all? &:save
+      models.map(&:save).all?
     end
 
 #

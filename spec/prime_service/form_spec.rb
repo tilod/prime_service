@@ -433,11 +433,11 @@ module PrimeService
           subject
         end
 
-        context "the #save method of the model returns true" do
+        context "when the #save method of the model returns true" do
           it { should be_true }
         end
 
-        context "the #save method of the model returns false" do
+        context "when the #save method of the model returns false" do
           before { allow(form.model).to receive(:save).and_return(false) }
           it { should be_false }
         end
@@ -487,7 +487,11 @@ module PrimeService
     end
 
     class UserCompanyFormLambda < Form
-      models account: Account, user: ->{ account.user }
+      models account: ::Account, user: ->{ account.user }
+    end
+
+    class UserCompanyFormPseudo < Form
+      models user: ::User, company: :transient
     end
 
     describe "Form for multiple models" do
@@ -687,6 +691,49 @@ module PrimeService
             expect(new_user.email).to eq "build_user@example.com"
           end
         end
+
+        context "one model type explicitly given, the other is a transient "\
+                "pseudo model" do
+          let(:form) { UserCompanyFormPseudo.new }
+
+          it "defines getters for the models" do
+            expect(form.user).to be_a User
+            expect(form.company).to be_nil
+          end
+
+          it "defines the initializer to build the models when called with "\
+             "no arguments" do
+            expect(form.user.email).to eq nil
+            expect(form.company).to be_nil
+          end
+
+          it "defines the initializer to assign all models to instance "\
+             "variables when passed as arguments" do
+            user = User.new.tap do |user|
+              user.email = "all@example.com"
+            end
+            company = "not default"
+            form = UserCompanyFormPseudo.new(user: user, company: company)
+            expect(form.user.email).to eq "all@example.com"
+            expect(form.company).to eq "not default"
+          end
+
+          it "defines the initializer to assign some models to instance "\
+             "variables when passed as arguments" do
+            user = User.new.tap do |user|
+              user.email = "some@example.com"
+            end
+            form = UserCompanyFormPseudo.new(user: user)
+            expect(form.user.email).to eq "some@example.com"
+            expect(form.company).to be_nil
+          end
+
+          it "defines #build_[model_name] methods that instanciate new models "\
+             "(or call the construstion lambdas, nil for pseudo models)" do
+            expect(form.build_user).to be_a User
+            expect(form).not_to respond_to :build_company
+          end
+        end
       end
 
 #
@@ -788,6 +835,54 @@ module PrimeService
           subject
           expect(form.user.email).to eq "test@example.com"
           expect(form.company.name).to eq "ACME"
+        end
+      end
+
+#
+#   PostForm#persist
+#
+
+      describe "#persist" do
+        subject { form.persist }
+
+        it "calls save on the model" do
+          expect(form.user).to receive(:save)
+          expect(form.company).to receive(:save)
+          subject
+        end
+
+        context "when all #save methods of the models return true" do
+          it { should be_true }
+        end
+
+        context "when some #save methods of the models return false" do
+          before { allow(form.company).to receive(:save).and_return(false) }
+          it { should be_false }
+        end
+
+        context "with pseudo models defined" do
+          context "and are passed as options" do
+            let(:form) { UserCompanyFormPseudo.new(company: "as default") }
+
+            it "does not call #save for pseudo models" do
+              expect(form.user).to receive(:save)
+              expect(form.company).not_to receive(:save)
+              subject
+            end
+          end
+
+          context "and are not passed as options" do
+            let(:form) { UserCompanyFormPseudo.new }
+
+            it "does not call #save for pseudo models" do
+              expect(form.user).to receive(:save)
+            # Setting the expect results in "An expectation of :save was set on
+            # nil." It is save to assume that save is not called: It would
+            # result in a "method not found" error on nil.
+            # expect(form.company).not_to receive(:save)
+              subject
+            end
+          end
         end
       end
     end
