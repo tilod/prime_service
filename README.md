@@ -24,7 +24,7 @@ Or install it yourself as:
 
 ## Usage
 
-See Wiki.
+See [Wiki](https://github.com/tilod/prime_service/wiki).
 
 
 
