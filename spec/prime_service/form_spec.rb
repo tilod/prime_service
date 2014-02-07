@@ -155,6 +155,15 @@ module PrimeService
       end
 
 #
+#   FeedbackForm#main_model
+#
+
+      describe "#main_model" do
+        subject { form.main_model }
+        it { should be_nil }
+      end
+
+#
 #   FeedbackForm#attributes=
 #
 
@@ -395,7 +404,7 @@ module PrimeService
       end
 
 #
-#   PostForm.main_model
+#   PostForm#main_model
 #
 
       describe "#main_model" do
@@ -631,6 +640,16 @@ module PrimeService
         it "returns an array with all attribute names" do
           expect(UserCompanyForm.attributes)
             .to match_array [:email, :company_name]
+        end
+      end
+
+#
+#   UserCompanyForm#main_model
+#
+
+      describe "#main_model" do
+        it "returns the main model of the form" do
+          expect(form.main_model).to be form.user
         end
       end
 
