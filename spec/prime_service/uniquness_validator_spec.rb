@@ -31,7 +31,7 @@ describe UniquenessValidator, :database do
 
   describe "called with `validates :attribute_name, uniquness: true`" do
     class TestForm < PrimeService::Form
-      model      :user
+      model      :user, type: UniqueUser
       persistent :email
 
       validates :email, uniqueness: true
@@ -45,7 +45,7 @@ describe UniquenessValidator, :database do
 
   describe "called with `validates_uniqueness_of ::attribute_name`" do
     class TestForm2 < PrimeService::Form
-      model      :user
+      model      :user, type: UniqueUser
       persistent :email
 
       validates_uniqueness_of :email
@@ -59,7 +59,7 @@ describe UniquenessValidator, :database do
 
   describe "called with :scope option with one scope" do
     class TestForm3 < PrimeService::Form
-      model      :user
+      model      :user, type: UniqueUser
       persistent :email
       persistent :name
 
@@ -92,7 +92,7 @@ describe UniquenessValidator, :database do
 
   describe "called with :scope option with scope array" do
     class TestForm4 < PrimeService::Form
-      model      :user
+      model      :user, type: UniqueUser
       persistent :email
       persistent :name
       persistent :group

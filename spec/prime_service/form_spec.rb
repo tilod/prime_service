@@ -61,7 +61,6 @@ module PrimeService
 
 
 
-
   describe Form do
     class FeedbackForm < Form
       transient :subject
@@ -91,17 +90,18 @@ module PrimeService
           expect(form.subject).to eq "Test Subject"
         end
 
-        it "has an option :type for coercion" do
+        it "has a :type options for coercion" do
           form.grade = "1"
           expect(form.grade).to eq 1
         end
 
-        it "uses String as default type" do
+        it "uses String as default type if :type option is omitted" do
           form.subject = 1234
           expect(form.subject).to eq "1234"
         end
 
-        it "passes other options to Virtus#attribute" do
+        it "passes other options to Virtus.attribute" do
+          pending
           expect(form.feedback).to eq "Enter Feedback"
         end
       end
@@ -183,7 +183,7 @@ module PrimeService
       def save; true; end
     end
 
-    class ::PostLambda
+    class ::PostCustomBuilder
       attr_accessor :text
       def save; true; end
     end
@@ -198,11 +198,15 @@ module PrimeService
     end
 
     class PostFormWithExplicitModelType < Form
-      model post: ::PostOther
+      model :post, type: PostOther
     end
 
-    class PostWithLambdaNewForm < Form
-      model post: ->{ PostLambda.new.tap { |post| post.text = "lambda" } }
+    class PostWithCustomBuilderForm < Form
+      model :post, type: PostCustomBuilder
+
+      def build_post
+        PostCustomBuilder.new.tap { |post| post.text = "custom builder" }
+      end
     end
 
     class UnnamedPostForm < Form
@@ -221,24 +225,40 @@ module PrimeService
       it_behaves_like :a_form_object
 
 #
+#   delegate
+#
+
+      describe "Delegations of ActiveModel::Conversion" do
+        it "delegates #persisted? to the set main model" do
+          expect(form.post).to receive(:persisted?).with(no_args)
+          form.persisted?
+        end
+
+        it "delegates #to_key to the model" do
+          expect(form.post).to receive(:to_key).with(no_args)
+          form.to_key
+        end
+
+        it "delegates #to_param to the model" do
+          expect(form.post).to receive(:to_param).with(no_args)
+          form.to_param
+        end
+
+        it "delegates #id to the model" do
+          expect(form.post).to receive(:id).with(no_args)
+          form.id
+        end
+      end
+
+#
 #   PostForm.model
 #
 
       describe ".model" do
-        it "sets the main model to the model" do
-          expect(PostForm).to receive(:main_model).with(:model)
-                          .and_call_original
-          PostForm.model(:post)
-        end
-
         context "model type has to be inferred" do
           let(:form) { PostForm.new }
 
-          it "defines #model which returns the model instance" do
-            expect(form.model).to be_a Post
-          end
-
-          it "defines a getter for the model (equivalent to #model)" do
+          it "defines a getter for the model" do
             expect(form.post).to be_a Post
           end
 
@@ -256,13 +276,8 @@ module PrimeService
             expect(form.post.headline).to eq "passed as argument"
           end
 
-          it "defines a method #build_model that instanciates a new model (or "\
-             "calls the construstion lambda)" do
-            expect(form.build_model).to be_a Post
-          end
-
           it "defines a method #build_[model_name] that instanciates a new "\
-             "model (or calls the construstion lambda)" do
+             "model (if not overridden)" do
             expect(form.build_post).to be_a Post
           end
         end
@@ -270,11 +285,7 @@ module PrimeService
         context "model type explicitly given" do
           let(:form) { PostFormWithExplicitModelType.new }
 
-          it "defines #model which returns the model instance" do
-            expect(form.model).to be_a PostOther
-          end
-
-          it "defines a getter for the model (equivalent to #model)" do
+          it "defines a getter for the model" do
             expect(form.post).to be_a PostOther
           end
 
@@ -292,26 +303,29 @@ module PrimeService
             expect(form.post.other).to eq "passed as argument"
           end
 
-          it "defines a method #build_model that instanciates a new model (or "\
-             "calls the construstion lambda)" do
-            expect(form.build_model).to be_a PostOther
+          it "defines a method #build_[model_name] that instanciates a new "\
+             "model (if not overridden)" do
+            expect(form.build_post).to be_a PostOther
           end
         end
 
-        context "model should be initialized with lambda" do
-          let(:form) { PostWithLambdaNewForm.new }
+        context "build_[model_name] is overridden" do
+          let(:form) { PostWithCustomBuilderForm.new }
 
-          it "defines #model which returns the model instance" do
-            expect(form.model).to be_a PostLambda
+          specify "overridden method returns an instance of the model" do
+            new_model = form.build_post
+
+            expect(new_model).to be_a PostCustomBuilder
+            expect(new_model.text).to eq "custom builder"
           end
 
-          it "defines a getter for the model (equivalent to #model)" do
-            expect(form.post).to be_a PostLambda
+          it "defines a getter for the model" do
+            expect(form.post).to be_a PostCustomBuilder
           end
 
           it "defines the initializer to build the model when called with "\
              "no arguments and calls the lambda" do
-            expect(form.post.text).to eq "lambda"
+            expect(form.post.text).to eq "custom builder"
           end
 
           it "defines the initializer to assign the model to an instance "\
@@ -319,16 +333,8 @@ module PrimeService
             post = Post.new.tap do |post|
               post.headline = "passed as argument"
             end
-            form = PostWithLambdaNewForm.new(post)
+            form = PostWithCustomBuilderForm.new(post)
             expect(form.post.headline).to eq "passed as argument"
-          end
-
-          it "defines a method #build_model that instanciates a new model (or "\
-             "calls the construction lambda)" do
-            new_model = form.build_model
-
-            expect(new_model).to be_a PostLambda
-            expect(new_model.text).to eq "lambda"
           end
         end
       end
@@ -361,8 +367,8 @@ module PrimeService
 
         it "defines #model_for_[attribute_name] that returns the model for "\
            "the attribute" do
-          expect(form.model_for_headline).to eq form.model
-          expect(form.model_for_content).to eq form.model
+          expect(form.model_for_headline).to eq form.post
+          expect(form.model_for_content).to eq form.post
         end
       end
 
@@ -385,6 +391,16 @@ module PrimeService
         it "returns an array with all attribute names" do
           expect(PostForm.attributes)
             .to match_array [:headline, :content]
+        end
+      end
+
+#
+#   PostForm.main_model
+#
+
+      describe "#main_model" do
+        it "returns the model of the form" do
+          expect(form.main_model).to be form.post
         end
       end
 
@@ -429,7 +445,7 @@ module PrimeService
         subject { form.persist }
 
         it "calls save on the model" do
-          expect(form.model).to receive(:save)
+          expect(form.post).to receive(:save)
           subject
         end
 
@@ -438,7 +454,7 @@ module PrimeService
         end
 
         context "when the #save method of the model returns false" do
-          before { allow(form.model).to receive(:save).and_return(false) }
+          before { allow(form.post).to receive(:save).and_return(false) }
           it { should be_false }
         end
       end
@@ -452,7 +468,7 @@ module PrimeService
       def save; true; end
     end
 
-    class ::Enterprise
+    class ::Company
       attr_accessor :name
       def save; true; end
     end
@@ -468,8 +484,8 @@ module PrimeService
     end
 
     class UserCompanyForm < Form
-      models     :user, company: ::Enterprise
-      main_model :user
+      model :user,    main: true
+      model :company
 
       persistent :email,        on: :user
       persistent :company_name, on: :company, as: :name
@@ -478,20 +494,20 @@ module PrimeService
       validates :company_name, presence: true
     end
 
-    class UserCompanyFormOnlySymbols < Form
-      models :user, :enterprise
+    class UserCompanyNoMainForm < Form
+      model :user
+      model :company
     end
 
-    class UserCompanyFormTwoHashes < Form
-      models user: ::User, company: ::Enterprise
-    end
+    class UserFormWithOption < Form
+      model  :user
+      option :predefined_email
 
-    class UserCompanyFormLambda < Form
-      models account: ::Account, user: ->{ account.user }
-    end
+      persistent :email
 
-    class UserCompanyFormPseudo < Form
-      models user: ::User, company: :transient
+      def build_user
+        User.new.tap { |user| user.email = predefined_email }
+      end
     end
 
     describe "Form for multiple models" do
@@ -503,245 +519,11 @@ module PrimeService
       it_behaves_like :a_form_object
 
 #
-#   UserCompanyForm.models
+#   delegate
 #
 
-      describe ".models" do
-        context "one model type explicitly given, the other has to be "\
-                "inferred" do
-          it "defines getters for the models" do
-            expect(form.user).to be_a User
-            expect(form.company).to be_an Enterprise
-          end
-
-          it "defines the initializer to build the models when called with "\
-             "no arguments" do
-            expect(form.user.email).to eq nil
-            expect(form.company.name).to eq nil
-          end
-
-          it "defines the initializer to assign all models to instance "\
-             "variables when passed as arguments" do
-            user = User.new.tap do |user|
-              user.email = "all@example.com"
-            end
-            company = Enterprise.new.tap do |company|
-              company.name = "ALL"
-            end
-            form = UserCompanyForm.new(user: user, company: company)
-            expect(form.user.email).to eq "all@example.com"
-            expect(form.company.name).to eq "ALL"
-          end
-
-          it "defines the initializer to assign some models to instance "\
-             "variables when passed as arguments" do
-            user = User.new.tap do |user|
-              user.email = "some@example.com"
-            end
-            form = UserCompanyForm.new(user: user)
-            expect(form.user.email).to eq "some@example.com"
-            expect(form.company.name).to eq nil
-          end
-
-          it "defines #build_[model_name] methods that instanciate new models "\
-             "(or call the construstion lambdas)" do
-            expect(form.build_user).to be_a User
-            expect(form.build_company).to be_an Enterprise
-          end
-        end
-
-        context "all models types have to be inferred" do
-          let(:form) { UserCompanyFormOnlySymbols.new }
-
-          it "defines getters for the models" do
-            expect(form.user).to be_a User
-            expect(form.enterprise).to be_a Enterprise
-          end
-
-          it "defines the initializer to build the models when called with "\
-             "no arguments" do
-            expect(form.user.email).to eq nil
-            expect(form.enterprise.name).to eq nil
-          end
-
-          it "defines the initializer to assign all models to instance "\
-             "variables when passed as arguments" do
-            user = User.new.tap do |user|
-              user.email = "all@example.com"
-            end
-            company = Enterprise.new.tap do |company|
-              company.name = "ALL"
-            end
-            form = UserCompanyFormOnlySymbols.new(user: user,
-                                                  enterprise: company)
-            expect(form.user.email).to eq "all@example.com"
-            expect(form.enterprise.name).to eq "ALL"
-          end
-
-          it "defines the initializer to assign some models to instance "\
-             "variables when passed as arguments" do
-            user = User.new.tap do |user|
-              user.email = "some@example.com"
-            end
-            form = UserCompanyFormOnlySymbols.new(user: user)
-            expect(form.user.email).to eq "some@example.com"
-            expect(form.enterprise.name).to eq nil
-          end
-
-          it "defines #build_[model_name] methods that instanciate new models "\
-             "(or call the construstion lambdas)" do
-            expect(form.build_user).to be_a User
-            expect(form.build_enterprise).to be_an Enterprise
-          end
-        end
-
-        context "all models types explicitly given" do
-          let(:form) { UserCompanyFormTwoHashes.new }
-
-          it "defines getters for the models" do
-            expect(form.user).to be_a User
-            expect(form.company).to be_an Enterprise
-          end
-
-          it "defines the initializer to build the models when called with "\
-             "no arguments" do
-            expect(form.user.email).to eq nil
-            expect(form.company.name).to eq nil
-          end
-
-          it "defines the initializer to assign all models to instance "\
-             "variables when passed as arguments" do
-            user = User.new.tap do |user|
-              user.email = "all@example.com"
-            end
-            company = Enterprise.new.tap do |company|
-              company.name = "ALL"
-            end
-            form = UserCompanyFormTwoHashes.new(user: user, company: company)
-            expect(form.user.email).to eq "all@example.com"
-            expect(form.company.name).to eq "ALL"
-          end
-
-          it "defines the initializer to assign some models to instance "\
-             "variables when passed as arguments" do
-            user = User.new.tap do |user|
-              user.email = "some@example.com"
-            end
-            form = UserCompanyFormTwoHashes.new(user: user)
-            expect(form.user.email).to eq "some@example.com"
-            expect(form.company.name).to eq nil
-          end
-
-          it "defines #build_[model_name] methods that instanciate new models "\
-             "(or call the construstion lambdas)" do
-            expect(form.build_user).to be_a User
-            expect(form.build_company).to be_an Enterprise
-          end
-        end
-
-        context "a model loads data from the other (with the lambda)" do
-          let(:form) { UserCompanyFormLambda.new }
-
-          it "defines getters for the models" do
-            expect(form.account).to be_an Account
-            expect(form.user).to be_a User
-          end
-
-          it "defines the initializer to build the models when called with "\
-             "no arguments, calling the lambda" do
-            expect(form.account.user).to eq form.user
-            expect(form.user.email).to eq "account@example.com"
-          end
-
-          it "defines the initializer to assign all models to instance "\
-             "variables when passed as arguments" do
-            account = Account.new.tap do |account|
-              account.user = :dummy_user
-            end
-            user = User.new.tap do |user|
-              user.email = "all@example.com"
-            end
-            form = UserCompanyFormLambda.new(account: account, user: user)
-            expect(form.account.user).to eq :dummy_user
-            expect(form.user.email).to eq "all@example.com"
-          end
-
-          it "defines the initializer to assign some models to instance "\
-             "variables when passed as arguments" do
-            user = User.new.tap do |user|
-              user.email = "some@example.com"
-            end
-            form = UserCompanyFormLambda.new(user: user)
-            expect(form.user.email).to eq "some@example.com"
-            expect(form.account.user.email).to eq "account@example.com"
-          end
-
-          it "defines #build_[model_name] methods that instanciate new models "\
-             "(or call the construction lambdas)" do
-            new_account = form.build_account
-            expect(new_account).to be_an Account
-
-            new_account.user = User.new.tap do |user|
-              user.email = "build_user@example.com"
-            end
-
-            form = UserCompanyFormLambda.new(account: new_account)
-            new_user = form.build_user
-            expect(new_user).to be_a User
-            expect(new_user.email).to eq "build_user@example.com"
-          end
-        end
-
-        context "one model type explicitly given, the other is a transient "\
-                "pseudo model" do
-          let(:form) { UserCompanyFormPseudo.new }
-
-          it "defines getters for the models" do
-            expect(form.user).to be_a User
-            expect(form.company).to be_nil
-          end
-
-          it "defines the initializer to build the models when called with "\
-             "no arguments" do
-            expect(form.user.email).to eq nil
-            expect(form.company).to be_nil
-          end
-
-          it "defines the initializer to assign all models to instance "\
-             "variables when passed as arguments" do
-            user = User.new.tap do |user|
-              user.email = "all@example.com"
-            end
-            company = "not default"
-            form = UserCompanyFormPseudo.new(user: user, company: company)
-            expect(form.user.email).to eq "all@example.com"
-            expect(form.company).to eq "not default"
-          end
-
-          it "defines the initializer to assign some models to instance "\
-             "variables when passed as arguments" do
-            user = User.new.tap do |user|
-              user.email = "some@example.com"
-            end
-            form = UserCompanyFormPseudo.new(user: user)
-            expect(form.user.email).to eq "some@example.com"
-            expect(form.company).to be_nil
-          end
-
-          it "defines #build_[model_name] methods that instanciate new models "\
-             "(or call the construstion lambdas, nil for pseudo models)" do
-            expect(form.build_user).to be_a User
-            expect(form).not_to respond_to :build_company
-          end
-        end
-      end
-
-#
-#   UserCompanyForm.main_model
-#
-
-      describe ".main_model" do
-        it "delegates #persisted? to the set main model" do
+      describe "Delegations of ActiveModel::Conversion" do
+        it "delegate #persisted? to the set main model" do
           expect(form.user).to receive(:persisted?).with(no_args)
           form.persisted?
         end
@@ -760,6 +542,40 @@ module PrimeService
           expect(form.user).to receive(:id).with(no_args)
           form.id
         end
+
+        context "when no mail model is set" do
+          let(:form) { UserCompanyNoMainForm.new }
+
+          specify { expect(form.persisted?).to be_nil }
+          specify { expect(form.to_key).to be_nil }
+          specify { expect(form.to_param).to be_nil }
+          specify { expect(form.id).to be_nil }
+        end
+      end
+
+#
+#   UserCompanyForm.option
+#
+  
+      describe ".option" do
+        let(:form) { UserFormWithOption.new(predefined_email: "test email") }
+
+        it "defines a getter for the option" do
+          expect(form.predefined_email).to eq "test email"
+        end
+
+        it "allows using an option in an overridden build_[attribute_name] "\
+           "method" do
+          expect(form.user.email).to eq "test email"
+        end
+
+        context "initializer is called without option" do
+          let(:form) { UserFormWithOption.new }
+
+          it "returns nil for the option" do
+            expect(form.predefined_email).to be_nil
+          end
+        end
       end
 
 #
@@ -767,7 +583,7 @@ module PrimeService
 #
 
       describe ".persistent" do
-        it "defines a setters and a getters for the attributes" do
+        it "defines setters and a getters for the attributes" do
           form.email        = "test@example.com"
           form.company_name = "ACME"
           expect(form.email).to eq "test@example.com"
@@ -845,7 +661,7 @@ module PrimeService
       describe "#persist" do
         subject { form.persist }
 
-        it "calls save on the model" do
+        it "calls save on the models" do
           expect(form.user).to receive(:save)
           expect(form.company).to receive(:save)
           subject
@@ -859,84 +675,68 @@ module PrimeService
           before { allow(form.company).to receive(:save).and_return(false) }
           it { should be_false }
         end
-
-        context "with pseudo models defined" do
-          context "and are passed as options" do
-            let(:form) { UserCompanyFormPseudo.new(company: "as default") }
-
-            it "does not call #save for pseudo models" do
-              expect(form.user).to receive(:save)
-              expect(form.company).not_to receive(:save)
-              subject
-            end
-          end
-
-          context "and are not passed as options" do
-            let(:form) { UserCompanyFormPseudo.new }
-
-            it "does not call #save for pseudo models" do
-              expect(form.user).to receive(:save)
-            # Setting the expect results in "An expectation of :save was set on
-            # nil." It is save to assume that save is not called: It would
-            # result in a "method not found" error on nil.
-            # expect(form.company).not_to receive(:save)
-              subject
-            end
-          end
-        end
       end
     end
 
 
-
-
-    class ::CategorizedPost < ::Post
-      attr_accessor :category
-
-      def save
-        true
-      end
+    class ::Product
+      attr_accessor :name
+      def save; true; end
     end
 
-    class CategorizedPostForm < PostForm
-      model :categorized_post
+    class ::Category
+      attr_accessor :name
+      def save; true; end
+    end
 
-      persistent :category
+    class ProductForm < Form
+      model :product, main: true
 
-      validates :category, presence: true
-    end    
+      persistent :name
+
+      validates :name, presence: true
+    end
+
+    class CategorizedProductForm < ProductForm
+      model :category
+
+      persistent :category_name, on: :category, as: :name
+
+      validates :category_name, presence: true
+    end
 
     describe "Inherited form" do
-      let(:form)   { CategorizedPostForm.new }
-      let(:params) { Hash[headline: "Headline", content: "My Post"] }
+      let(:form)   { CategorizedProductForm.new }
+      let(:params) { Hash[name: "TestProduct", category_name: "TestCategory"] }
 
       it_behaves_like :a_form_object
 
-      it "has the model of the inherited class" do
-        expect(form.model).to be_a ::CategorizedPost
+      it "has the model of the base class" do
+        expect(form.product).to be_a Product
+      end
+
+      it "has both the models of the base and inherited class" do
+        expect(form.category).to be_a Category
       end
 
       it "has the attributes of the base form" do
-        form.headline = "Test Headline"
-        form.content  = "Test Content"
-
-        expect(form.headline).to eq "Test Headline"
-        expect(form.content).to eq "Test Content"
+        form.name = "Test Product Name"
+        expect(form.name).to eq "Test Product Name"
       end
 
       it "has the attributes of the inherited form" do
-        form.category = "Test Category"
-        expect(form.category).to eq "Test Category"
+        form.category_name = "Test Category Name"
+        expect(form.category_name).to eq "Test Category Name"
       end
 
       it "has the validations of the base form" do
         expect(form.valid?).to be_false
-        expect(form.errors[:headline].size).to eq 1
+        expect(form.errors[:name].size).to eq 1
       end
 
       it "has the validations of the inherited form" do
         expect(form.valid?).to be_false
-        expect(form.errors[:category].size).to eq 1
+        expect(form.errors[:category_name].size).to eq 1
       end
 
 #
@@ -945,8 +745,19 @@ module PrimeService
 
       describe ".attributes" do
         it "returns an array with all attribute names" do
-          expect(CategorizedPostForm.attributes)
-            .to match_array [:headline, :content, :category]
+          expect(CategorizedProductForm.attributes)
+            .to match_array [:name, :category_name]
+        end
+      end
+
+#
+#   CategorizedPostForm.models
+#
+
+      describe ".models" do
+        it "returns an array with all model names" do
+          expect(CategorizedProductForm.models)
+            .to match_array [:product, :category]
         end
       end
     end

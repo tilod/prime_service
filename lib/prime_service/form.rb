@@ -17,8 +17,8 @@ module PrimeService
     end
 
 
-    def self.model(model_name, model_class = nil, main: false)
-      model_class ||= model_name.to_s.camelize.constantize.new
+    def self.model(model_name, type: nil, main: false)
+      model_class = type || model_name.to_s.camelize.constantize
 
       mod = Module.new do
         define_method model_name do
@@ -42,9 +42,17 @@ module PrimeService
       _own_models_ << model_name
     end
 
+
+    def self.option(option_name)
+      mod = Module.new do
+        attr_reader option_name
+      end
+      include mod
+    end
+
     
     def self.persistent(attribute_name, options = {})
-      on = options.has_key?(:on) ? options[:on] : :model
+      on = options.has_key?(:on) ? options[:on] : :main_model
       as = options.has_key?(:as) ? options[:as] : attribute_name
 
       define_method attribute_name do
@@ -63,7 +71,8 @@ module PrimeService
     end
 
     
-    def self.transient(attribute_name, type = String, options = {})
+    def self.transient(attribute_name, options = {})
+      type = options[:type] || String
       attribute attribute_name, type, options
 
       _own_attributes_ << attribute_name
@@ -123,10 +132,16 @@ module PrimeService
 #   instance methods
 #
 
-    def initialize(model = nil, models = {})
-      instance_variable_set :"@#{self.class._main_model_name_}" if model
-      
-      models.each do |model_name, model|
+    def initialize(main_model_or_hash = nil, models_and_options = {})
+      if main_model_or_hash
+        if main_model_or_hash.is_a? Hash
+          models_and_options.merge! main_model_or_hash
+        else
+          instance_variable_set :"@#{main_model_name}", main_model_or_hash
+        end
+      end
+        
+      models_and_options.each do |model_name, model|
         instance_variable_set :"@#{model_name}", model
       end
     end
