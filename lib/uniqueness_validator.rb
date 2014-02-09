@@ -1,6 +1,7 @@
 class UniquenessValidator < ActiveModel::EachValidator
   def initialize(options)
-    @scope = options[:scope]
+    @scope      = options[:scope]
+    @conditions = options[:conditions]
     super
   end
 
@@ -11,6 +12,10 @@ class UniquenessValidator < ActiveModel::EachValidator
 
     Array(@scope).each do |scope|
       relation = relation.where(scope => record.send(scope))
+    end
+
+    if @conditions
+      relation = relation.merge(@conditions)
     end
 
     count     = relation.count

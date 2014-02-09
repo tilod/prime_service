@@ -148,4 +148,32 @@ describe UniquenessValidator, :database do
       it { should_not be_valid }
     end
   end
+
+
+  describe "called with :conditions option" do
+    class TestForm5 < PrimeService::Form
+      model      :user, type: UniqueUser
+      persistent :email
+      persistent :name
+
+      validates :email, uniqueness: { conditions: ->{ where(name: "match") } }
+    end
+
+    subject { TestForm5.new(user) }
+
+    context "email is unique but condition matches" do
+      before { UniqueUser.create(email: "other@example.com", name: "match") }
+      it { should be_valid }
+    end
+
+    context "email is not unique but condition does not match" do
+      before { UniqueUser.create(email: "test@example.com", name: "other") }
+      it { should be_valid }
+    end
+
+    context "email is not unique and condition matches" do
+      before { UniqueUser.create(email: "test@example.com", name: "match") }
+      it { should_not be_valid }
+    end
+  end
 end
