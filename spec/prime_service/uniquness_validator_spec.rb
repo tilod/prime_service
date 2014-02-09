@@ -21,6 +21,13 @@ describe UniquenessValidator, :database do
         expect(subject.errors[:email].size).to eq 1
       end
     end
+
+    context "when field is not unique, but the entry in the database is the "\
+            "database is the model itself" do
+      before { user.save! }
+
+      it { should be_valid }
+    end
   end
 
 
