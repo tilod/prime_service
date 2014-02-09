@@ -207,6 +207,10 @@ module PrimeService
 #
 
       describe "Delegations of ActiveModel::Conversion" do
+        class PostFormNoMain < Form
+          model :post, main: false
+        end
+
         it "delegates #persisted? to the set main model" do
           expect(form.post).to receive(:persisted?).with(no_args)
           form.persisted?
@@ -225,6 +229,16 @@ module PrimeService
         it "delegates #id to the model" do
           expect(form.post).to receive(:id).with(no_args)
           form.id
+        end
+
+        context "when model is set to be no main model (with "\
+                "`model ..., main: false`)" do
+          let(:form) { PostFormNoMain.new }
+
+          specify { expect(form.persisted?).to be_nil }
+          specify { expect(form.to_key).to be_nil }
+          specify { expect(form.to_param).to be_nil }
+          specify { expect(form.id).to be_nil }
         end
       end
 
@@ -532,7 +546,7 @@ module PrimeService
           form.id
         end
 
-        context "when no mail model is set" do
+        context "when no main model is set" do
           let(:form) { UserCompanyNoMainForm.new }
 
           specify { expect(form.persisted?).to be_nil }
@@ -665,7 +679,7 @@ module PrimeService
       end
 
 #
-#   PostForm#persist
+#   UserCompanyForm#persist
 #
 
       describe "#persist" do
@@ -684,6 +698,26 @@ module PrimeService
         context "when some #save methods of the models return false" do
           before { allow(form.company).to receive(:save).and_return(false) }
           it { should be_false }
+        end
+
+        context "when a model is set to be not persisted (by overridding the "\
+                "#build_[model_name] method)"do
+          class UserCompanyFormNoPersist < Form
+            model :user
+            model :company
+            
+            def persist_company?
+              false
+            end
+          end
+
+          let(:form) { UserCompanyFormNoPersist.new }
+
+          it "does not call #save on the not to persist model" do
+            expect(form.user).to receive(:save)
+            expect(form.company).not_to receive(:save)
+            subject
+          end
         end
       end
     end

@@ -17,8 +17,15 @@ module PrimeService
     end
 
 
-    def self.model(model_name, type: nil, main: false)
-      model_class = type || model_name.to_s.camelize.constantize
+    def self.model(model_name, type: nil, main: :_unset_, build: nil,
+                               persist: ->{ true })
+      build_method = if build
+        build
+      elsif type
+        ->{ type.new }
+      else
+        ->{ model_name.to_s.camelize.constantize.new }
+      end
 
       mod = Module.new do
         define_method model_name do
@@ -26,13 +33,19 @@ module PrimeService
           instance_variable_set :"@#{model_name}", send("build_#{model_name}")
         end
 
-        define_method "build_#{model_name}" do
-          model_class.new
-        end
+        define_method "build_#{model_name}", build_method
 
-        if main
-          define_method :main_model_name do
-            model_name
+        define_method "persist_#{model_name}?", persist
+
+        unless main == :_unset_
+          if main
+            define_method :main_model_name do
+              model_name
+            end
+          else
+            define_method :main_model_name do
+              nil
+            end
           end
           private :main_model_name
         end
@@ -167,7 +180,10 @@ module PrimeService
 
 
     def persist
-      models.map(&:save).all?
+      model_names.select { |model_name| send "persist_#{model_name}?" }
+                 .map    { |model_name| send model_name }
+                 .map(&:save)
+                 .all?
     end
 
 
@@ -181,20 +197,13 @@ module PrimeService
 
     private
 
-    def models
-      @_models_ ||= self.class.models.map { |model_name| send(model_name) }
-    end
-
-    
     def attribute_names
       @_attribute_names_ ||= self.class.attributes
     end
 
-
     def model_names
       @_model_names_ ||= self.class.models
     end
-
 
     def main_model_name
       @_main_model_name_ ||= (model_names.size != 1 ? nil : model_names.first)
