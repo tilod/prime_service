@@ -62,19 +62,15 @@ module PrimeService
 
 
   describe Form do
-    class FeedbackForm < Form
-      transient :subject
-      transient :grade,    type: Integer
-      transient :feedback, default: "Enter Feedback"
-
-      validates :subject, presence: true
-    end
-
-    class NamedFeedbackForm < Form
-      form_name "SetByFormName"
-    end
-
     describe "Form without a model" do
+      class FeedbackForm < Form
+        transient :subject
+        transient :grade,    type: Integer
+        transient :feedback, default: "Enter Feedback"
+
+        validates :subject, presence: true
+      end
+
       let(:form)   { FeedbackForm.new }
       let(:params) { Hash[subject: "Subject", grade: 2] }
       
@@ -133,6 +129,10 @@ module PrimeService
 #
 
       describe ".model_name" do
+        class NamedFeedbackForm < Form
+          form_name "SetByFormName"
+        end
+
         context "when .form_name is not used to set the name" do
           subject { FeedbackForm.model_name }
 
@@ -182,52 +182,21 @@ module PrimeService
 
 
 
-    class ::Post
-      attr_accessor :headline, :content
-      def save; true; end
-    end
-
-    class ::PostOther
-      attr_accessor :other
-      def save; true; end
-    end
-
-    class ::PostCustomBuilder
-      attr_accessor :text
-      def save; true; end
-    end
-
-    class PostForm < Form
-      model :post
-
-      persistent :headline
-      persistent :content
-
-      validates :headline, presence: true
-    end
-
-    class PostFormWithExplicitModelType < Form
-      model :post, type: PostOther
-    end
-
-    class PostWithCustomBuilderForm < Form
-      model :post, type: PostCustomBuilder
-
-      def build_post
-        PostCustomBuilder.new.tap { |post| post.text = "custom builder" }
-      end
-    end
-
-    class UnnamedPostForm < Form
-      model :post
-    end
-
-    class NamedPostForm < Form
-      form_name "SetByFormName"
-      model     :post
-    end
-
     describe "Form for one model" do
+      class ::Post
+        attr_accessor :headline, :content
+        def save; true; end
+      end
+
+      class PostForm < Form
+        model :post
+
+        persistent :headline
+        persistent :content
+
+        validates :headline, presence: true
+      end
+
       let(:form)   { PostForm.new }
       let(:params) { Hash[headline: "Headline", content: "My Post"] }
 
@@ -292,6 +261,15 @@ module PrimeService
         end
 
         context "model type explicitly given" do
+          class PostOther
+            attr_accessor :other
+            def save; true; end
+          end
+
+          class PostFormWithExplicitModelType < Form
+            model :post, type: PostOther
+          end
+
           let(:form) { PostFormWithExplicitModelType.new }
 
           it "defines a getter for the model" do
@@ -319,6 +297,19 @@ module PrimeService
         end
 
         context "build_[model_name] is overridden" do
+          class PostCustomBuilder
+            attr_accessor :text
+            def save; true; end
+          end
+
+          class PostWithCustomBuilderForm < Form
+            model :post, type: PostCustomBuilder
+
+            def build_post
+              PostCustomBuilder.new.tap { |post| post.text = "custom builder" }
+            end
+          end
+
           let(:form) { PostWithCustomBuilderForm.new }
 
           specify "overridden method returns an instance of the model" do
@@ -472,54 +463,38 @@ module PrimeService
 
 
 
-    class ::User
-      attr_accessor :email
-      def save; true; end
-    end
-
-    class ::Company
-      attr_accessor :name
-      def save; true; end
-    end
-
-    class ::Account
-      attr_accessor :user
-
-      def initialize
-        @user = ::User.new.tap { |user| user.email = "account@example.com" }
-      end
-
-      def save; true; end
-    end
-
-    class UserCompanyForm < Form
-      model :user,    main: true
-      model :company
-
-      persistent :email,        on: :user
-      persistent :company_name, on: :company, as: :name
-
-      validates :email, presence: true
-      validates :company_name, presence: true
-    end
-
-    class UserCompanyNoMainForm < Form
-      model :user
-      model :company
-    end
-
-    class UserFormWithOption < Form
-      model  :user
-      option :predefined_email
-
-      persistent :email
-
-      def build_user
-        User.new.tap { |user| user.email = predefined_email }
-      end
-    end
-
     describe "Form for multiple models" do
+      class ::User
+        attr_accessor :email
+        def save; true; end
+      end
+
+      class ::Company
+        attr_accessor :name
+        def save; true; end
+      end
+
+      class ::Account
+        attr_accessor :user
+
+        def initialize
+          @user = ::User.new.tap { |user| user.email = "account@example.com" }
+        end
+
+        def save; true; end
+      end
+
+      class UserCompanyForm < Form
+        model :user,    main: true
+        model :company
+
+        persistent :email,        on: :user
+        persistent :company_name, on: :company, as: :name
+
+        validates :email, presence: true
+        validates :company_name, presence: true
+      end
+
       let(:form)   { UserCompanyForm.new }
       let(:params) { Hash[email:        "test@example.com",
                           password:     "123456",
@@ -532,6 +507,11 @@ module PrimeService
 #
 
       describe "Delegations of ActiveModel::Conversion" do
+        class UserCompanyNoMainForm < Form
+          model :user
+          model :company
+        end
+
         it "delegate #persisted? to the set main model" do
           expect(form.user).to receive(:persisted?).with(no_args)
           form.persisted?
@@ -567,6 +547,17 @@ module PrimeService
 #
   
       describe ".option" do
+        class UserFormWithOption < Form
+          model  :user
+          option :predefined_email
+
+          persistent :email
+
+          def build_user
+            User.new.tap { |user| user.email = predefined_email }
+          end
+        end
+
         let(:form) { UserFormWithOption.new(predefined_email: "test email") }
 
         it "defines a getter for the option" do
@@ -698,33 +689,35 @@ module PrimeService
     end
 
 
-    class ::Product
-      attr_accessor :name
-      def save; true; end
-    end
 
-    class ::Category
-      attr_accessor :name
-      def save; true; end
-    end
-
-    class ProductForm < Form
-      model :product, main: true
-
-      persistent :name
-
-      validates :name, presence: true
-    end
-
-    class CategorizedProductForm < ProductForm
-      model :category
-
-      persistent :category_name, on: :category, as: :name
-
-      validates :category_name, presence: true
-    end
 
     describe "Inherited form" do
+      class ::Product
+        attr_accessor :name
+        def save; true; end
+      end
+
+      class ::Category
+        attr_accessor :name
+        def save; true; end
+      end
+
+      class ProductForm < Form
+        model :product, main: true
+
+        persistent :name
+
+        validates :name, presence: true
+      end
+
+      class CategorizedProductForm < ProductForm
+        model :category
+
+        persistent :category_name, on: :category, as: :name
+
+        validates :category_name, presence: true
+      end
+
       let(:form)   { CategorizedProductForm.new }
       let(:params) { Hash[name: "TestProduct", category_name: "TestCategory"] }
 
