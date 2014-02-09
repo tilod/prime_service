@@ -18,7 +18,7 @@ module PrimeService
 
 
     def self.model(model_name, type: nil, main: :_unset_, build: nil,
-                               persist: ->{ true })
+                               reject_if: ->{ false })
       build_method = if build
         build
       elsif type
@@ -35,7 +35,7 @@ module PrimeService
 
         define_method "build_#{model_name}", build_method
 
-        define_method "persist_#{model_name}?", persist
+        define_method "reject_#{model_name}?", reject_if
 
         unless main == :_unset_
           if main
@@ -180,7 +180,7 @@ module PrimeService
 
 
     def persist
-      model_names.select { |model_name| send "persist_#{model_name}?" }
+      model_names.reject { |model_name| send "reject_#{model_name}?" }
                  .map    { |model_name| send model_name }
                  .map(&:save)
                  .all?

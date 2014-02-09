@@ -702,16 +702,34 @@ module PrimeService
 
         context "when a model is set to be not persisted (by overridding the "\
                 "#build_[model_name] method)"do
-          class UserCompanyFormNoPersist < Form
+          class UserCompanyFormRejectMethod < Form
             model :user
             model :company
             
-            def persist_company?
-              false
+            def reject_company?
+              true
             end
           end
 
-          let(:form) { UserCompanyFormNoPersist.new }
+          let(:form) { UserCompanyFormRejectMethod.new }
+
+          it "does not call #save on the not to persist model" do
+            expect(form.user).to receive(:save)
+            expect(form.company).not_to receive(:save)
+            subject
+          end
+        end
+
+        context "when a model is set to be not persisted (by using the "\
+                ":reject_if option)"do
+          class UserCompanyFormRejectLambda < Form
+            model :user
+            model :company, reject_if: ->{ !persist_company }
+            
+            option :persist_company
+          end
+
+          let(:form) { UserCompanyFormRejectLambda.new(persist_company: false) }
 
           it "does not call #save on the not to persist model" do
             expect(form.user).to receive(:save)
