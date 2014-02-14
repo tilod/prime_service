@@ -7,7 +7,6 @@ module PrimeService
 #   Form#submit
 #
 
-
     describe "#submit" do
       subject { form.submit(params) }
 
@@ -73,7 +72,7 @@ module PrimeService
 
       let(:form)   { FeedbackForm.new }
       let(:params) { Hash[subject: "Subject", grade: 2] }
-      
+
       it_behaves_like :a_form_object
 
 #
@@ -137,7 +136,7 @@ module PrimeService
           subject { FeedbackForm.model_name }
 
           it { should be_an ActiveModel::Name }
-          
+
           it "is derived from the class name" do
             should eq "Feedback"
           end
@@ -321,7 +320,7 @@ module PrimeService
 
             let(:form) { PostFormWithBuildLambda.new }
 
-            it "defines a build_[model_name] method using class passed as type" do
+            it "defines a build_[model_name] method using the passed lambda" do
               expect(form.build_post).to eq :custom_build_lambda
             end
           end

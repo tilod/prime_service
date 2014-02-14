@@ -19,14 +19,14 @@ module PrimeService
 
     def self.model(model_name, type: nil, main: :_unset_, build: nil,
                                reject_if: ->{ false })
-      
+
       build_method = if build
         build
       else
         model_class = type || model_name.to_s.camelize.constantize
 
         lambda do
-          if (model_id = instance_variable_get :"@#{model_name}_id") 
+          if (model_id = send "#{model_name}_id")
             model_class.find(model_id)
           else
             model_class.new
@@ -35,6 +35,9 @@ module PrimeService
       end
 
       mod = Module.new do
+        attr_writer model_name
+        attr_accessor "#{model_name}_id"
+
         define_method model_name do
           instance_variable_get :"@#{model_name}" or
           instance_variable_set :"@#{model_name}", send("build_#{model_name}")
@@ -65,12 +68,12 @@ module PrimeService
 
     def self.option(option_name)
       mod = Module.new do
-        attr_reader option_name
+        attr_accessor option_name
       end
       include mod
     end
 
-    
+
     def self.persistent(attribute_name, options = {})
       on = options.has_key?(:on) ? options[:on] : :main_model
       as = options.has_key?(:as) ? options[:as] : attribute_name
@@ -90,7 +93,7 @@ module PrimeService
       _own_attributes_ << attribute_name
     end
 
-    
+
     def self.transient(attribute_name, options = {})
       type = options[:type] || String
       attribute attribute_name, type, options
@@ -151,13 +154,6 @@ module PrimeService
 #
 #   instance methods
 #
-
-    def initialize(models_and_options = {})
-      models_and_options.each do |model_name, model|
-        instance_variable_set :"@#{model_name}", model
-      end
-    end
-
 
     def submit(params = nil)
       self.attributes = params if params
