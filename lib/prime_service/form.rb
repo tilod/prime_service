@@ -19,12 +19,19 @@ module PrimeService
 
     def self.model(model_name, type: nil, main: :_unset_, build: nil,
                                reject_if: ->{ false })
+      
       build_method = if build
         build
-      elsif type
-        ->{ type.new }
       else
-        ->{ model_name.to_s.camelize.constantize.new }
+        model_class = type || model_name.to_s.camelize.constantize
+
+        lambda do
+          if (model_id = instance_variable_get :"@#{model_name}_id") 
+            model_class.find(model_id)
+          else
+            model_class.new
+          end
+        end
       end
 
       mod = Module.new do
@@ -145,15 +152,7 @@ module PrimeService
 #   instance methods
 #
 
-    def initialize(main_model_or_hash = nil, models_and_options = {})
-      if main_model_or_hash
-        if main_model_or_hash.is_a? Hash
-          models_and_options.merge! main_model_or_hash
-        else
-          instance_variable_set :"@#{main_model_name}", main_model_or_hash
-        end
-      end
-        
+    def initialize(models_and_options = {})
       models_and_options.each do |model_name, model|
         instance_variable_set :"@#{model_name}", model
       end
