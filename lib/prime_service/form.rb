@@ -132,12 +132,12 @@ module PrimeService
     end
 
 
-    def self.models(attrs = [])
+    def self.models(models = [])
       @_all_models_ ||=
         if superclass == ::PrimeService::Form
           _own_models_
         else
-          _own_models_ + superclass.models(attrs)
+          _own_models_ + superclass.models(models)
         end
     end
 
