@@ -832,5 +832,45 @@ module PrimeService
         end
       end
     end
+
+
+
+
+    describe "Special options" do
+      class ::Image
+        attr_reader :file
+        def save; true; end
+      end
+
+      class ImageForm < Form
+        model      :image
+        persistent :file
+        transient  :_destroy, type: Boolean
+      end
+
+      let(:form) { ImageForm.new }
+
+#
+#   ImageForm.transient :_destroy
+#
+
+      describe "transient :_destroy" do
+        context "when set to true" do
+          before { form._destroy = true }
+
+          it "calls #destroy on the models when persisting" do
+            expect(form.image).to receive(:destroy).with(no_args)
+            form.persist
+          end
+        end
+
+        context "when set to false (or nil)" do
+          it "does not call #destroy on the models when persisting" do
+            expect(form.image).not_to receive(:destroy)
+            form.persist
+          end
+        end
+      end
+    end
   end
 end

@@ -176,10 +176,14 @@ module PrimeService
 
 
     def persist
-      model_names.reject { |model_name| send "reject_#{model_name}?" }
-                 .map    { |model_name| send model_name }
-                 .map(&:save)
-                 .all?
+      models = model_names.reject { |model_name| send "reject_#{model_name}?" }
+                          .map    { |model_name| send model_name }
+
+      if @_destroy
+        models.map(&:destroy).all?
+      else
+        models.map(&:save).all?
+      end
     end
 
 
