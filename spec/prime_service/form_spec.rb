@@ -96,7 +96,6 @@ module PrimeService
         end
 
         it "passes other options to Virtus.attribute" do
-          pending
           expect(form.feedback).to eq "Enter Feedback"
         end
       end
@@ -279,6 +278,11 @@ module PrimeService
               expect(Post).to receive(:find).with("1")
               form.build_post
             end
+
+            it "assigns the built model to the form" do
+              post = form.build_post
+              expect(form.post).to be post
+            end
           end
 
           context "when initializer was not called with :[model_name]_id "\
@@ -287,12 +291,22 @@ module PrimeService
               expect(Post).to receive(:new).with(no_args)
               form.build_post
             end
+
+            it "assigns the built model to the form" do
+              post = form.build_post
+              expect(form.post).to be post
+            end
           end
 
           context "model type has to be inferred" do
             it "defines a build_[model_name] method inferring the class of the "\
                "model" do
               expect(form.build_post).to be_a Post
+            end
+
+            it "assigns the built model to the form" do
+              post = form.build_post
+              expect(form.post).to be post
             end
           end
 
@@ -698,7 +712,7 @@ module PrimeService
           class UserCompanyFormRejectMethod < Form
             model :user
             model :company
-            
+
             def reject_company?
               true
             end
@@ -718,7 +732,7 @@ module PrimeService
           class UserCompanyFormRejectLambda < Form
             model :user
             model :company, reject_if: ->{ !persist_company }
-            
+
             option :persist_company
           end
 

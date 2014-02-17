@@ -21,15 +21,17 @@ module PrimeService
                                reject_if: ->{ false })
 
       build_method = if build
-        build
+        lambda do
+          instance_variable_set :"@#{model_name}", build.call
+        end
       else
         model_class = type || model_name.to_s.camelize.constantize
 
         lambda do
           if (model_id = send "#{model_name}_id")
-            model_class.find(model_id)
+            instance_variable_set :"@#{model_name}", model_class.find(model_id)
           else
-            model_class.new
+            instance_variable_set :"@#{model_name}", model_class.new
           end
         end
       end
@@ -39,8 +41,7 @@ module PrimeService
         attr_accessor "#{model_name}_id"
 
         define_method model_name do
-          instance_variable_get :"@#{model_name}" or
-          instance_variable_set :"@#{model_name}", send("build_#{model_name}")
+          instance_variable_get :"@#{model_name}" or send "build_#{model_name}"
         end
 
         define_method "build_#{model_name}", build_method
