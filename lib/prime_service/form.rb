@@ -18,24 +18,35 @@ module PrimeService
 
 
     def self.model(model_name, type: nil, main: :_unset_, build: nil,
-                               persist: ->{ true })
+                               reject_if: ->{ false })
+
       build_method = if build
-        build
-      elsif type
-        ->{ type.new }
+        lambda do
+          instance_variable_set :"@#{model_name}", build.call
+        end
       else
-        ->{ model_name.to_s.camelize.constantize.new }
+        model_class = type || model_name.to_s.camelize.constantize
+
+        lambda do
+          if (model_id = send "#{model_name}_id")
+            instance_variable_set :"@#{model_name}", model_class.find(model_id)
+          else
+            instance_variable_set :"@#{model_name}", model_class.new
+          end
+        end
       end
 
       mod = Module.new do
+        attr_writer model_name
+        attr_accessor "#{model_name}_id"
+
         define_method model_name do
-          instance_variable_get :"@#{model_name}" or
-          instance_variable_set :"@#{model_name}", send("build_#{model_name}")
+          instance_variable_get :"@#{model_name}" or send "build_#{model_name}"
         end
 
         define_method "build_#{model_name}", build_method
 
-        define_method "persist_#{model_name}?", persist
+        define_method "reject_#{model_name}?", reject_if
 
         unless main == :_unset_
           if main
@@ -58,12 +69,12 @@ module PrimeService
 
     def self.option(option_name)
       mod = Module.new do
-        attr_reader option_name
+        attr_accessor option_name
       end
       include mod
     end
 
-    
+
     def self.persistent(attribute_name, options = {})
       on = options.has_key?(:on) ? options[:on] : :main_model
       as = options.has_key?(:as) ? options[:as] : attribute_name
@@ -83,7 +94,7 @@ module PrimeService
       _own_attributes_ << attribute_name
     end
 
-    
+
     def self.transient(attribute_name, options = {})
       type = options[:type] || String
       attribute attribute_name, type, options
@@ -122,12 +133,12 @@ module PrimeService
     end
 
 
-    def self.models(attrs = [])
+    def self.models(models = [])
       @_all_models_ ||=
         if superclass == ::PrimeService::Form
           _own_models_
         else
-          _own_models_ + superclass.models(attrs)
+          _own_models_ + superclass.models(models)
         end
     end
 
@@ -144,21 +155,6 @@ module PrimeService
 #
 #   instance methods
 #
-
-    def initialize(main_model_or_hash = nil, models_and_options = {})
-      if main_model_or_hash
-        if main_model_or_hash.is_a? Hash
-          models_and_options.merge! main_model_or_hash
-        else
-          instance_variable_set :"@#{main_model_name}", main_model_or_hash
-        end
-      end
-        
-      models_and_options.each do |model_name, model|
-        instance_variable_set :"@#{model_name}", model
-      end
-    end
-
 
     def submit(params = nil)
       self.attributes = params if params
@@ -180,10 +176,14 @@ module PrimeService
 
 
     def persist
-      model_names.select { |model_name| send "persist_#{model_name}?" }
-                 .map    { |model_name| send model_name }
-                 .map(&:save)
-                 .all?
+      models = model_names.reject { |model_name| send "reject_#{model_name}?" }
+                          .map    { |model_name| send model_name }
+
+      if @_destroy
+        models.map(&:destroy).all?
+      else
+        models.map(&:save).all?
+      end
     end
 
 

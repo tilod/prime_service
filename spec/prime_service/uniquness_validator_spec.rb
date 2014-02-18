@@ -21,6 +21,13 @@ describe UniquenessValidator, :database do
         expect(subject.errors[:email].size).to eq 1
       end
     end
+
+    context "when field is not unique, but the entry in the database is the "\
+            "database is the model itself" do
+      before { user.save! }
+
+      it { should be_valid }
+    end
   end
 
 
@@ -37,7 +44,7 @@ describe UniquenessValidator, :database do
       validates :email, uniqueness: true
     end
 
-    subject { TestForm.new(user) }
+    subject { TestForm.new(user: user) }
 
     it_behaves_like :a_uniqueness_validator
   end
@@ -51,7 +58,7 @@ describe UniquenessValidator, :database do
       validates_uniqueness_of :email
     end
 
-    subject { TestForm2.new(user) }
+    subject { TestForm2.new(user: user) }
 
     it_behaves_like :a_uniqueness_validator
   end
@@ -66,7 +73,7 @@ describe UniquenessValidator, :database do
       validates :email, uniqueness: { scope: :name }
     end
 
-    subject { TestForm3.new(user) }
+    subject { TestForm3.new(user: user) }
 
     context "email and name are unique" do
       before { UniqueUser.create(email: "other@example.com", name: "other") }
@@ -100,7 +107,7 @@ describe UniquenessValidator, :database do
       validates :email, uniqueness: { scope: [:name, :group] }
     end
 
-    subject { TestForm4.new(user) }
+    subject { TestForm4.new(user: user) }
 
     context "email and name and group are unique" do
       before { UniqueUser.create(email: "other@example.com", name: "other",
@@ -138,6 +145,34 @@ describe UniquenessValidator, :database do
       before { UniqueUser.create(email: "test@example.com", name: "test name",
                                  group: "admin") }
 
+      it { should_not be_valid }
+    end
+  end
+
+
+  describe "called with :conditions option" do
+    class TestForm5 < PrimeService::Form
+      model      :user, type: UniqueUser
+      persistent :email
+      persistent :name
+
+      validates :email, uniqueness: { conditions: ->{ where(name: "match") } }
+    end
+
+    subject { TestForm5.new(user: user) }
+
+    context "email is unique but condition matches" do
+      before { UniqueUser.create(email: "other@example.com", name: "match") }
+      it { should be_valid }
+    end
+
+    context "email is not unique but condition does not match" do
+      before { UniqueUser.create(email: "test@example.com", name: "other") }
+      it { should be_valid }
+    end
+
+    context "email is not unique and condition matches" do
+      before { UniqueUser.create(email: "test@example.com", name: "match") }
       it { should_not be_valid }
     end
   end

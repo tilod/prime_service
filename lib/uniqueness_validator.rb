@@ -1,6 +1,7 @@
 class UniquenessValidator < ActiveModel::EachValidator
   def initialize(options)
-    @scope = options[:scope]
+    @scope      = options[:scope]
+    @conditions = options[:conditions]
     super
   end
 
@@ -13,7 +14,13 @@ class UniquenessValidator < ActiveModel::EachValidator
       relation = relation.where(scope => record.send(scope))
     end
 
-    if relation.any?
+    if @conditions
+      relation = relation.merge(@conditions)
+    end
+
+    count     = relation.count
+    conflicts = count > 1 || (count == 1 && relation.first.id != record.id)
+    if conflicts
       record.errors.add attribute, :taken
     end
   end

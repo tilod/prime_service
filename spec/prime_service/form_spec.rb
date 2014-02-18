@@ -7,7 +7,6 @@ module PrimeService
 #   Form#submit
 #
 
-
     describe "#submit" do
       subject { form.submit(params) }
 
@@ -73,7 +72,7 @@ module PrimeService
 
       let(:form)   { FeedbackForm.new }
       let(:params) { Hash[subject: "Subject", grade: 2] }
-      
+
       it_behaves_like :a_form_object
 
 #
@@ -97,7 +96,6 @@ module PrimeService
         end
 
         it "passes other options to Virtus.attribute" do
-          pending
           expect(form.feedback).to eq "Enter Feedback"
         end
       end
@@ -137,7 +135,7 @@ module PrimeService
           subject { FeedbackForm.model_name }
 
           it { should be_an ActiveModel::Name }
-          
+
           it "is derived from the class name" do
             should eq "Feedback"
           end
@@ -243,112 +241,121 @@ module PrimeService
       end
 
 #
+#   PostForm.new
+#
+
+      describe "initializer" do
+        it "assigns the passed models and options to instance variables" do
+          post = Post.new.tap do |post|
+            post.headline = "passed as argument"
+          end
+          form = PostForm.new(post: post)
+          expect(form.post.headline).to eq "passed as argument"
+        end
+      end
+
+#
 #   PostForm.model
 #
 
       describe ".model" do
-        context "model type has to be inferred" do
-          let(:form) { PostForm.new }
+        let(:form) { PostForm.new }
 
-          it "defines a getter for the model" do
-            expect(form.post).to be_a Post
-          end
-
-          it "defines the initializer to build the model when called with "\
-             "no arguments" do
-            expect(form.post.headline).to eq nil
-          end
-
-          it "defines the initializer to assign the model to an instance "\
-             "variable when passed as argument" do
-            post = Post.new.tap do |post|
-              post.headline = "passed as argument"
-            end
-            form = PostForm.new(post)
-            expect(form.post.headline).to eq "passed as argument"
-          end
-
-          it "defines a method #build_[model_name] that instanciates a new "\
-             "model (if not overridden)" do
-            expect(form.build_post).to be_a Post
-          end
+        it "defines a getter for the model" do
+          expect(form.post).to be_a Post
         end
 
-        context "model type explicitly given" do
-          class PostOther
-            attr_accessor :other
-            def save; true; end
-          end
-
-          class PostFormWithExplicitModelType < Form
-            model :post, type: PostOther
-          end
-
-          let(:form) { PostFormWithExplicitModelType.new }
-
-          it "defines a getter for the model" do
-            expect(form.post).to be_a PostOther
-          end
-
-          it "defines the initializer to build the model when called with "\
-             "no arguments" do
-            expect(form.post.other).to eq nil
-          end
-
-          it "defines the initializer to assign the model to an instance "\
-             "variable when passed as argument" do
-            post = PostOther.new.tap do |post|
-              post.other = "passed as argument"
-            end
-            form = PostFormWithExplicitModelType.new(post)
-            expect(form.post.other).to eq "passed as argument"
-          end
-
-          it "defines a method #build_[model_name] that instanciates a new "\
-             "model (if not overridden)" do
-            expect(form.build_post).to be_a PostOther
-          end
+        it "defines the getter to build the model when model is not assigned" do
+          expect(form).to receive(:build_post).with(no_args)
+          form.post
         end
 
-        context "build_[model_name] is overridden" do
-          class PostCustomBuilder
-            attr_accessor :text
-            def save; true; end
-          end
+        describe "defines a build_[model_name] method" do
+          context "when initializer was called with :[model_name]_id "\
+                  "argument" do
+            it "trys to load the model from the database" do
+              form = PostForm.new(post_id: "1")
+              expect(Post).to receive(:find).with("1")
+              form.build_post
+            end
 
-          class PostWithCustomBuilderForm < Form
-            model :post, type: PostCustomBuilder
-
-            def build_post
-              PostCustomBuilder.new.tap { |post| post.text = "custom builder" }
+            it "assigns the built model to the form" do
+              post = form.build_post
+              expect(form.post).to be post
             end
           end
 
-          let(:form) { PostWithCustomBuilderForm.new }
-
-          specify "overridden method returns an instance of the model" do
-            new_model = form.build_post
-
-            expect(new_model).to be_a PostCustomBuilder
-            expect(new_model.text).to eq "custom builder"
-          end
-
-          it "defines a getter for the model" do
-            expect(form.post).to be_a PostCustomBuilder
-          end
-
-          it "defines the initializer to build the model when called with "\
-             "no arguments and calls the lambda" do
-            expect(form.post.text).to eq "custom builder"
-          end
-
-          it "defines the initializer to assign the model to an instance "\
-             "variable when passed as argument" do
-            post = Post.new.tap do |post|
-              post.headline = "passed as argument"
+          context "when initializer was not called with :[model_name]_id "\
+                  "param" do
+            it "initializes the model with no arguments" do
+              expect(Post).to receive(:new).with(no_args)
+              form.build_post
             end
-            form = PostWithCustomBuilderForm.new(post)
-            expect(form.post.headline).to eq "passed as argument"
+
+            it "assigns the built model to the form" do
+              post = form.build_post
+              expect(form.post).to be post
+            end
+          end
+
+          context "model type has to be inferred" do
+            it "defines a build_[model_name] method inferring the class of the "\
+               "model" do
+              expect(form.build_post).to be_a Post
+            end
+
+            it "assigns the built model to the form" do
+              post = form.build_post
+              expect(form.post).to be post
+            end
+          end
+
+          context "model type explicitly given" do
+            class PostOther
+              attr_accessor :other
+              def save; true; end
+            end
+
+            class PostFormWithExplicitModelType < Form
+              model :post, type: PostOther
+            end
+
+            let(:form) { PostFormWithExplicitModelType.new }
+
+            it "defines a build_[model_name] method using class passed as type" do
+              expect(form.build_post).to be_a PostOther
+            end
+          end
+
+          context "model build lambda explicitly given" do
+            class PostFormWithBuildLambda < Form
+              model :post, build: ->{ :custom_build_lambda }
+            end
+
+            let(:form) { PostFormWithBuildLambda.new }
+
+            it "defines a build_[model_name] method using the passed lambda" do
+              expect(form.build_post).to eq :custom_build_lambda
+            end
+          end
+
+          describe "generated build_[model_name] method can be overridden" do
+            class PostWithCustomBuilderForm < Form
+              model :post
+
+              def build_post
+                Post.new.tap { |post| post.content = "custom builder" }
+              end
+            end
+
+            let(:form) { PostWithCustomBuilderForm.new }
+
+            it "gets called instead of the generated method" do
+              new_model = form.build_post
+
+              expect(new_model).to be_a Post
+              expect(new_model.content).to eq "custom builder"
+            end
           end
         end
       end
@@ -702,16 +709,34 @@ module PrimeService
 
         context "when a model is set to be not persisted (by overridding the "\
                 "#build_[model_name] method)"do
-          class UserCompanyFormNoPersist < Form
+          class UserCompanyFormRejectMethod < Form
             model :user
             model :company
-            
-            def persist_company?
-              false
+
+            def reject_company?
+              true
             end
           end
 
-          let(:form) { UserCompanyFormNoPersist.new }
+          let(:form) { UserCompanyFormRejectMethod.new }
+
+          it "does not call #save on the not to persist model" do
+            expect(form.user).to receive(:save)
+            expect(form.company).not_to receive(:save)
+            subject
+          end
+        end
+
+        context "when a model is set to be not persisted (by using the "\
+                ":reject_if option)"do
+          class UserCompanyFormRejectLambda < Form
+            model :user
+            model :company, reject_if: ->{ !persist_company }
+
+            option :persist_company
+          end
+
+          let(:form) { UserCompanyFormRejectLambda.new(persist_company: false) }
 
           it "does not call #save on the not to persist model" do
             expect(form.user).to receive(:save)
@@ -804,6 +829,46 @@ module PrimeService
         it "returns an array with all model names" do
           expect(CategorizedProductForm.models)
             .to match_array [:product, :category]
+        end
+      end
+    end
+
+
+
+
+    describe "Special options" do
+      class ::Image
+        attr_reader :file
+        def save; true; end
+      end
+
+      class ImageForm < Form
+        model      :image
+        persistent :file
+        transient  :_destroy, type: Boolean
+      end
+
+      let(:form) { ImageForm.new }
+
+#
+#   ImageForm.transient :_destroy
+#
+
+      describe "transient :_destroy" do
+        context "when set to true" do
+          before { form._destroy = true }
+
+          it "calls #destroy on the models when persisting" do
+            expect(form.image).to receive(:destroy).with(no_args)
+            form.persist
+          end
+        end
+
+        context "when set to false (or nil)" do
+          it "does not call #destroy on the models when persisting" do
+            expect(form.image).not_to receive(:destroy)
+            form.persist
+          end
         end
       end
     end
