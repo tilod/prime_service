@@ -34,12 +34,12 @@ module PrimeService
   shared_examples_for :a_service_object do
     describe ".call" do
       it "initializes the service with the factory method and calls it" do
-        service_double = double :service_double
-        expect(test_class).to receive(:for).with(:foo_value, :bar_value)
-                           .and_return(service_double)
+        service_double = instance_double Service
+        expect(test_class).to receive(:for).with("foo value", "bar value")
+                          .and_return(service_double)
         expect(service_double).to receive(:call)
 
-        test_class.call(:foo_value, :bar_value)
+        test_class.call("foo value", "bar value")
       end
     end
 
@@ -57,15 +57,7 @@ module PrimeService
   describe Service do
     describe "Service without factory" do
       let(:test_class)   { TestService }
-      let(:test_service) { test_class.for(:foo_value, :bar_value) }
-
-
-      describe ".call_with" do
-        it "defines attribute readers for the params" do
-          expect(test_service).to respond_to :foo
-          expect(test_service).to respond_to :bar
-        end
-      end
+      let(:test_service) { test_class.for("foo value", "bar value") }
 
 
       describe ".for" do
@@ -89,15 +81,7 @@ module PrimeService
 
     describe "Service with a factory which does the same as the default" do
       let(:test_class)   { TestServiceWithFactory }
-      let(:test_service) { test_class.for(:subclass_1, :bar_value) }
-
-
-      describe ".call_with" do
-        it "defines attribute readers for the params" do
-          expect(test_service).to respond_to :foo
-          expect(test_service).to respond_to :bar
-        end
-      end
+      let(:test_service) { test_class.for(:subclass_1, "bar value") }
 
 
       describe ".for" do
