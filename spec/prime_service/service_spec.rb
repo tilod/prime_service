@@ -32,11 +32,6 @@ module PrimeService
 
 
   shared_examples_for :a_service_object do
-
-#
-#   Service.call
-#
-
     describe ".call" do
       it "initializes the service with the factory method and calls it" do
         service_double = double :service_double
@@ -48,9 +43,6 @@ module PrimeService
       end
     end
 
-#
-#   Service#call
-#
 
     describe "#call" do
       it "has a fallback #call method that does nothing" do
@@ -67,9 +59,6 @@ module PrimeService
       let(:test_class)   { TestService }
       let(:test_service) { test_class.for(:foo_value, :bar_value) }
 
-#
-#   Service.call_with
-#
 
       describe ".call_with" do
         it "defines attribute readers for the params" do
@@ -78,9 +67,6 @@ module PrimeService
         end
       end
 
-#
-#   Service.for
-#
 
       describe ".for" do
         it "initializes the service" do
@@ -88,16 +74,6 @@ module PrimeService
         end
       end
 
-#
-#   Service#initialize
-#
-
-      describe "initializer" do
-        it "assigns the params to instance variables" do
-          expect(test_service.foo).to eq :foo_value
-          expect(test_service.bar).to eq :bar_value
-        end
-      end
 
       it_behaves_like :a_service_object
     end
@@ -115,9 +91,6 @@ module PrimeService
       let(:test_class)   { TestServiceWithFactory }
       let(:test_service) { test_class.for(:subclass_1, :bar_value) }
 
-#
-#   Service.call_with
-#
 
       describe ".call_with" do
         it "defines attribute readers for the params" do
@@ -126,9 +99,6 @@ module PrimeService
         end
       end
 
-#
-#   Service.for
-#
 
       describe ".for" do
         it "calls the factory method defined by .factory" do
@@ -136,16 +106,6 @@ module PrimeService
         end
       end
 
-#
-#   Service#initialize
-#
-
-      describe "initializer" do
-        it "assigns the params to instance variables" do
-          expect(test_service.foo).to eq :subclass_1
-          expect(test_service.bar).to eq :bar_value
-        end
-      end
 
       it_behaves_like :a_service_object
     end
