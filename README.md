@@ -28,20 +28,15 @@ A service object encapsulates a complex manipulation.
 
 
 
-## Conventions
-
-* A Service Object may not save the objects it gets passed into the `#call` method to the database. Following this rule, you can call several Service Object in a row without worrying to save an object too soon or multiple times.
-
-* However, a Service Object may create other persistence objects and save them to the database.
-
-* The `#call` method (which is called by the `.call` class method) should return a truthy value when the execution was successful and `false` otherwise.
-
-
-
 ## Defining a service object
 
 
 ### A simple service
+
+The `.call_with` macro method defines attribute readers and writers named by the passed symbols. When you call the service, pass these attributes as arguments.
+
+The core functionality of the service is provided by the `#call` method.
+
 
 ```ruby
 class MarkMessageAsRead < PrimeService::Service
@@ -49,9 +44,15 @@ class MarkMessageAsRead < PrimeService::Service
 
   def call
     message.read = true
+    message.save!
+    
+    true
   end
 end
 ```
+
+By convention the service should return a truthy value if it succeded and `false` if an error occured. In the above example, this is done by returning `true` if no exception was thrown by the `#save!` method. It is also possible to use `#save` and return directly after the method call. Either way, error handling must be implemented manually.
+
 
 
 ### A service with a factory method
@@ -75,6 +76,9 @@ class MarkMessageAsRead < RailsPrimer::Service
   class NoNotification < self
     def call
       message.read = true
+      message.save!
+      
+      true
     end
   end
 
@@ -82,6 +86,9 @@ class MarkMessageAsRead < RailsPrimer::Service
     def call
       SendReadNotification.call(message)
       message.read = true
+      message.save!
+      
+      true
     end
   end
 end
@@ -107,27 +114,27 @@ service.call
 
 ### Example: Usage in a controller
 
-Mark a message as read. This should never fail, so we can use `#save!`. Note that `#save` is called by the controller. This is by convention, see [Conventions](#conventions) below.
+Mark a message as read. This action should never fail, so it always redirects to the messages listing.
 
 ```ruby
 class MessagesController < ApplicationController
   def mark_as_read
     message = Message.find(params[:id])
-    MarkMessageAsRead.call(message) and message.save!
+    MarkMessageAsRead.call(message)
 
     redirect_to messages_path
   end
 end
 ```
 
-Sharing a message on Twitter. If sharing on Twitter fails, the message should not be created.
+Sharing a message on Twitter. If the validation of the message fails (or another error occures that make the service return `false`) the message form is displayed. Otherwise it redirects to the show action.
 
 ```ruby
 class MessagesController < ApplicationController
   def create
     @messages = Message.new(params[:message])
 
-    if ShareMessageOnTwitter.call(@message) && @message.save
+    if ShareMessageOnTwitter.call(@message)
       redirect_to @message
     else
       render "new"
