@@ -114,7 +114,7 @@ service.call
 
 ### Example: Usage in a controller
 
-Mark a message as read.
+Mark a message as read. This action should never fail, so it always redirects to the messages listing.
 
 ```ruby
 class MessagesController < ApplicationController
@@ -127,7 +127,7 @@ class MessagesController < ApplicationController
 end
 ```
 
-Sharing a message on Twitter. If sharing on Twitter fails, the message should not be created.
+Sharing a message on Twitter. If the validation of the message fails (or another error occures that make the service return `false`) the message form is displayed. Otherwise it redirects to the show action.
 
 ```ruby
 class MessagesController < ApplicationController
