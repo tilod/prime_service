@@ -52,7 +52,7 @@ module PrimeService
     describe "policy without initializer arguments" do
       let(:test_policy) { TestPolicyWithoutParams.new }
 
-      it "works" do
+      it "still works" do
         expect(test_policy).to be_a Policy
       end
     end
@@ -121,6 +121,14 @@ module PrimeService
         it "it keeps the default value in place when no value for an flag "\
            "is passed" do
           expect(test_policy.flag_2?).to be true
+        end
+      end
+
+      context "when no options hash is given" do
+        let(:test_policy) { TestPolicyWithOptionsAndFlags.new("foo value") }
+
+        it "still works" do
+          expect(test_policy).to be_a Policy
         end
       end
     end
