@@ -33,6 +33,11 @@ A service object encapsulates a complex manipulation.
 
 ### A simple service
 
+The `.call_with` macro method defines attribute readers and writers named by the passed symbols. When you call the service, pass these attributes as arguments.
+
+The core functionality of the service is provided by the `#call` method.
+
+
 ```ruby
 class MarkMessageAsRead < PrimeService::Service
   call_with :message
@@ -45,6 +50,9 @@ class MarkMessageAsRead < PrimeService::Service
   end
 end
 ```
+
+By convention the service should return a truthy value if it succeded and `false` if an error occured. In the above example, this is done by returning `true` if no exception was thrown by the `#save!` method. It is also possible to use `#save` and return directly after the method call. Either way, error handling must be implemented manually.
+
 
 
 ### A service with a factory method
@@ -69,6 +77,8 @@ class MarkMessageAsRead < RailsPrimer::Service
     def call
       message.read = true
       message.save!
+      
+      true
     end
   end
 
@@ -77,6 +87,8 @@ class MarkMessageAsRead < RailsPrimer::Service
       SendReadNotification.call(message)
       message.read = true
       message.save!
+      
+      true
     end
   end
 end
