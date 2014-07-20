@@ -28,16 +28,6 @@ A service object encapsulates a complex manipulation.
 
 
 
-## Conventions
-
-* A Service Object may not save the objects it gets passed into the `#call` method to the database. Following this rule, you can call several Service Object in a row without worrying to save an object too soon or multiple times.
-
-* However, a Service Object may create other persistence objects and save them to the database.
-
-* The `#call` method (which is called by the `.call` class method) should return a truthy value when the execution was successful and `false` otherwise.
-
-
-
 ## Defining a service object
 
 
@@ -49,6 +39,9 @@ class MarkMessageAsRead < PrimeService::Service
 
   def call
     message.read = true
+    message.save!
+    
+    true
   end
 end
 ```
@@ -75,6 +68,7 @@ class MarkMessageAsRead < RailsPrimer::Service
   class NoNotification < self
     def call
       message.read = true
+      message.save!
     end
   end
 
@@ -82,6 +76,7 @@ class MarkMessageAsRead < RailsPrimer::Service
     def call
       SendReadNotification.call(message)
       message.read = true
+      message.save!
     end
   end
 end
@@ -107,13 +102,13 @@ service.call
 
 ### Example: Usage in a controller
 
-Mark a message as read. This should never fail, so we can use `#save!`. Note that `#save` is called by the controller. This is by convention, see [Conventions](#conventions) below.
+Mark a message as read.
 
 ```ruby
 class MessagesController < ApplicationController
   def mark_as_read
     message = Message.find(params[:id])
-    MarkMessageAsRead.call(message) and message.save!
+    MarkMessageAsRead.call(message)
 
     redirect_to messages_path
   end
@@ -127,7 +122,7 @@ class MessagesController < ApplicationController
   def create
     @messages = Message.new(params[:message])
 
-    if ShareMessageOnTwitter.call(@message) && @message.save
+    if ShareMessageOnTwitter.call(@message)
       redirect_to @message
     else
       render "new"
