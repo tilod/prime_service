@@ -10,11 +10,29 @@ module PrimeService
   end
 
 
+  class TestPolicyWithFactory < Service
+    call_with :foo, :bar
+
+    def self.for(foo, bar)
+      if foo == :subclass_1
+        TestSubclassOne.new(foo, bar)
+      else
+        TestSubclassTwo.new(foo, bar)
+      end
+    end
+
+    class TestSubclassOne < self
+    end
+
+    class TestSubclassTwo < self
+    end
+  end
+
+
   describe Policy do
-    let(:test_policy) { TestPolicy.new("foo value", "bar value") }
-
-
     describe "policy with initializer params" do
+      let(:test_policy) { TestPolicy.for("foo value", "bar value") }
+
       describe ".call_with" do
         it "defines attribute readers for the call params" do
           expect(test_policy).to respond_to :foo
@@ -41,6 +59,18 @@ module PrimeService
 
       it "works" do
         expect(test_policy).to be_a Policy
+      end
+    end
+
+
+    describe "policy with a factory which does the same as the default" do
+      let(:test_policy) { TestPolicyWithFactory.for(:subclass_1, :bar) }
+
+
+      describe ".for" do
+        it "calls the factory method defined by .factory" do
+          expect(test_policy).to be_a TestPolicyWithFactory::TestSubclassOne
+        end
       end
     end
   end

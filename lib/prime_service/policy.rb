@@ -11,6 +11,11 @@ module PrimeService
     end
 
 
+    def self.for(*params)
+      new(*params)
+    end
+
+
     def initialize(*params)
       _call_params_.each_with_index do |attribute, index|
         instance_variable_set "@#{attribute}", params[index]

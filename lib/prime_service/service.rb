@@ -5,11 +5,6 @@ module PrimeService
     end
 
 
-    def self.for(*params)
-      new(*params)
-    end
-
-
     def call
       nil
     end
