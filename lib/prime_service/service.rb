@@ -1,5 +1,5 @@
 module PrimeService
-  class Service < Policy
+  class Service < Base
     def self.call(*params)
       self.for(*params).call
     end
