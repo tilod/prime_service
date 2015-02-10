@@ -15,6 +15,19 @@ module PrimeService
     class TestAggregatorWithoutLoadData < described_class
     end
 
+    class InheritedTestAggregatorWithSuper < TestAggregator
+      load_data :loaded_only_here do
+        super()
+        self.loaded_only_here = model.attr_2
+      end
+    end
+
+    class InheritedTestAggregatorWithoutSuper < TestAggregator
+      load_data :loaded_only_here do
+        self.loaded_only_here = model.attr_2
+      end
+    end
+
     TestModel = Struct.new(:attr_1, :attr_2)
 
     let(:model)      { TestModel.new(:foo, :bar) }
@@ -56,6 +69,32 @@ module PrimeService
 
       it "also works when .load_data is not called" do
         expect { TestAggregatorWithoutLoadData.new }.not_to raise_error
+      end
+
+      context "with an inherited aggregator that calls super in .load_data" do
+        let(:aggregator) { InheritedTestAggregatorWithSuper.for(model) }
+
+        it "loads the data for the base class" do
+          expect(aggregator.loaded_from_model).to eq :foo
+        end
+
+        it "loads the data for the inherited class" do
+          expect(aggregator.loaded_only_here).to eq :bar
+        end
+      end
+
+      context "with an inherited aggregator that does not call super in "\
+              ".load_data" do
+        let(:aggregator) { InheritedTestAggregatorWithoutSuper.for(model) }
+
+        it "defines the attribute accessors for the data of the base class "\
+           "but does not load the data itself" do
+          expect(aggregator.loaded_from_model).to be_nil
+        end
+
+        it "loads the data for the inherited class" do
+          expect(aggregator.loaded_only_here).to eq :bar
+        end
       end
     end
   end
