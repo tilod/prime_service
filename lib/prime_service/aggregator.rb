@@ -12,5 +12,24 @@ module PrimeService
         end
       end
     end
+
+
+    def self.load_data(*attrs, &block)
+      attr_accessor *attrs
+
+      define_method :load_data, &block
+    end
+
+
+    def initialize(*)
+      super
+      load_data
+    end
+
+
+    private
+
+    def load_data
+    end
   end
 end
