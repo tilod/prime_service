@@ -3,7 +3,8 @@ require "spec_helper"
 module PrimeService
   describe Aggregator do
     class TestAggregator < described_class
-      call_with :model
+      call_with      :model
+      delegate_id_to :model
 
       load_data :loaded_from_model do
         self.loaded_from_model = model.attr_1
@@ -28,7 +29,12 @@ module PrimeService
       end
     end
 
-    TestModel = Struct.new(:attr_1, :attr_2)
+    TestModel = Struct.new(:attr_1, :attr_2) do
+      def id;          end
+      def to_key;      end
+      def new_record?; end
+      def persisted?;  end
+    end
 
     let(:model)      { TestModel.new(:foo, :bar) }
     let(:aggregator) { TestAggregator.for(model) }
@@ -49,6 +55,29 @@ module PrimeService
 
         expect(model.attr_1).to eq :new_foo
         expect(model.attr_2).to eq :new_bar
+      end
+    end
+
+
+    describe ".delegate_id_to" do
+      it "defines a delegator for #id to the given model" do
+        expect(model).to receive(:id).with(no_args)
+        aggregator.id
+      end
+
+      it "defines a delegator for #to_key to the given model" do
+        expect(model).to receive(:to_key).with(no_args)
+        aggregator.to_key
+      end
+
+      it "defines a delegator for #new_record? to the given model" do
+        expect(model).to receive(:new_record?).with(no_args)
+        aggregator.new_record?
+      end
+
+      it "defines a delegator for #persisted? to the given model" do
+        expect(model).to receive(:persisted?).with(no_args)
+        aggregator.persisted?
       end
     end
 

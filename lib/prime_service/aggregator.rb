@@ -14,6 +14,25 @@ module PrimeService
     end
 
 
+    def self.delegate_id_to(model)
+      define_method :id do
+        send(model).id
+      end
+
+      define_method :to_key do
+        send(model).to_key
+      end
+
+      define_method :new_record? do
+        send(model).new_record?
+      end
+
+      define_method :persisted? do
+        send(model).persisted?
+      end
+    end
+
+
     def self.load_data(*attrs, &block)
       attr_accessor *attrs
 
