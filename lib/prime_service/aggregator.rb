@@ -14,7 +14,7 @@ module PrimeService
     end
 
 
-    def self.delegate_id_to(model)
+    def self.delegate_record_id(model)
       define_method :id do
         send(model).id
       end
@@ -29,6 +29,17 @@ module PrimeService
 
       define_method :persisted? do
         send(model).persisted?
+      end
+    end
+
+
+    def self.define_as_new_record
+      define_method :new_record? do
+        true
+      end
+
+      define_method :persisted? do
+        false
       end
     end
 

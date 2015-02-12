@@ -3,14 +3,19 @@ require "spec_helper"
 module PrimeService
   describe Aggregator do
     class TestAggregator < described_class
-      call_with      :model
-      delegate_id_to :model
+      call_with          :model
+      delegate_record_id :model
 
       load_data :loaded_from_model do
         self.loaded_from_model = model.attr_1
       end
 
       delegate_attr :model, :attr_1, :attr_2
+    end
+
+    class TestAggregatorAsNewRecord < described_class
+      call_with :model
+      define_as_new_record
     end
 
     class TestAggregatorWithoutLoadData < described_class
@@ -59,7 +64,7 @@ module PrimeService
     end
 
 
-    describe ".delegate_id_to" do
+    describe ".delegate_record_id" do
       it "defines a delegator for #id to the given model" do
         expect(model).to receive(:id).with(no_args)
         aggregator.id
@@ -78,6 +83,27 @@ module PrimeService
       it "defines a delegator for #persisted? to the given model" do
         expect(model).to receive(:persisted?).with(no_args)
         aggregator.persisted?
+      end
+    end
+
+
+    describe ".define_as_new_record" do
+      let(:aggregator) { TestAggregatorAsNewRecord.for(model) }
+
+      it "defines #new_record? with true" do
+        expect(aggregator.new_record?).to be true
+      end
+
+      it "defines #persisted? with false" do
+        expect(aggregator.persisted?).to be false
+      end
+
+      it "does not define (nor delegate) #id" do
+        expect(aggregator).not_to respond_to :id
+      end
+
+      it "does not define (nor delegate) #to_key" do
+        expect(aggregator).not_to respond_to :to_key
       end
     end
 
