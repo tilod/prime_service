@@ -27,6 +27,10 @@ module PrimeService
         send(model).to_param
       end
 
+      define_method :to_model do
+        send(model).to_model
+      end
+
       define_method :new_record? do
         send(model).new_record?
       end

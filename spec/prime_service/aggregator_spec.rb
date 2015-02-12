@@ -80,6 +80,11 @@ module PrimeService
         aggregator.to_param
       end
 
+      it "defines a delegator for #to_model to the given model" do
+        expect(model).to receive(:to_model).with(no_args)
+        aggregator.to_model
+      end
+
       it "defines a delegator for #new_record? to the given model" do
         expect(model).to receive(:new_record?).with(no_args)
         aggregator.new_record?
@@ -113,6 +118,10 @@ module PrimeService
 
       it "does not define (nor delegate) #to_param" do
         expect(aggregator).not_to respond_to :to_param
+      end
+
+      it "does not define (nor delegate) #to_model" do
+        expect(aggregator).not_to respond_to :to_model
       end
     end
 
