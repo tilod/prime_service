@@ -13,39 +13,18 @@ module PrimeService
       delegate_attr :model, :attr_1, :attr_2
     end
 
-    class TestAggregatorAsNewRecord < described_class
-      call_with :model
-      define_as_new_record
-    end
-
-    class TestAggregatorWithoutLoadData < described_class
-    end
-
-    class InheritedTestAggregatorWithSuper < TestAggregator
-      load_data :loaded_only_here do
-        super()
-        self.loaded_only_here = model.attr_2
-      end
-    end
-
-    class InheritedTestAggregatorWithoutSuper < TestAggregator
-      load_data :loaded_only_here do
-        self.loaded_only_here = model.attr_2
-      end
-    end
-
-    TestModel = Struct.new(:attr_1, :attr_2) do
+    TestModel = Struct.new(:attr_1, :attr_2, :attr_3) do
       def id;          end
       def to_key;      end
       def new_record?; end
       def persisted?;  end
     end
 
-    let(:model)      { TestModel.new(:foo, :bar) }
+    let(:model)      { TestModel.new(:foo, :bar, :baz) }
     let(:aggregator) { TestAggregator.for(model) }
 
 
-    describe ".delegate_attr" do
+    describe ".delegate_accessor (alias to .delegate_attr)" do
       it "defines readers for all passed attributes, delegating to the model" do
         expect(aggregator.attr_1).to eq :foo
         expect(aggregator.attr_2).to eq :bar
@@ -60,6 +39,93 @@ module PrimeService
 
         expect(model.attr_1).to eq :new_foo
         expect(model.attr_2).to eq :new_bar
+      end
+
+      describe "super calls in reader and writer" do
+        class TestAggregatorWithSuper < described_class
+          call_with :model
+
+          delegate_attr :model, :attr_1
+
+          def attr_1
+            super.to_s + "_reader_super"
+          end
+
+          def attr_1=(value)
+            super(value + "_writer_super")
+          end
+        end
+        let(:aggregator) { TestAggregatorWithSuper.for(model) }
+
+        it "makes super usable in reader" do
+          expect(model.attr_1).to eq :foo
+          expect(aggregator.attr_1).to eq "foo_reader_super"
+        end
+
+        it "makes super usable in writer" do
+          aggregator.attr_1 = "bar"
+          expect(aggregator.attr_1).to eq "bar_writer_super_reader_super"
+          expect(model.attr_1).to eq "bar_writer_super"
+        end
+      end
+
+      describe "reader and writer are inheritable" do
+        class InheritedTestAggregator < TestAggregator
+          delegate_attr :model, :attr_3
+        end
+        let(:aggregator) { InheritedTestAggregator.for(model) }
+
+        it "uses the readers and writers from the superclass" do
+          expect(aggregator.attr_1).to eq :foo
+          expect(aggregator.attr_2).to eq :bar
+
+          aggregator.attr_1 = :new_foo
+          aggregator.attr_2 = :new_bar
+
+          expect(aggregator.attr_1).to eq :new_foo
+          expect(aggregator.attr_2).to eq :new_bar
+        end
+
+        it "defines it own readers and writers" do
+          expect(aggregator.attr_3).to eq :baz
+          aggregator.attr_3 = :new_baz
+          expect(aggregator.attr_3).to eq :new_baz
+        end
+      end
+    end
+
+
+    describe ".delegate_reader" do
+      class TestAggregatorOnlyReader < described_class
+        call_with :model
+        delegate_reader :model, :attr_1
+      end
+      let(:aggregator) { TestAggregatorOnlyReader.for(model) }
+
+      it "defines readers for all passed attributes, delegating to the model" do
+        expect(aggregator.attr_1).to eq :foo
+      end
+
+      it "does not define writers for the passed attributes" do
+        expect(aggregator).not_to respond_to :attr_1=
+      end
+    end
+
+
+    describe ".delegate_writer" do
+      class TestAggregatorOnlyWriter < described_class
+        call_with :model
+        delegate_writer :model, :attr_1
+      end
+      let(:aggregator) { TestAggregatorOnlyWriter.for(model) }
+
+      it "does not define readers for the passed attributes" do
+        expect(aggregator).not_to respond_to :attr_1
+      end
+
+      it "defines writers for all passed attributes, delegating to the model" do
+        aggregator.attr_1 = :new_foo
+        expect(model.attr_1).to eq :new_foo
       end
     end
 
@@ -98,6 +164,10 @@ module PrimeService
 
 
     describe ".define_as_new_record" do
+      class TestAggregatorAsNewRecord < described_class
+        call_with :model
+        define_as_new_record
+      end
       let(:aggregator) { TestAggregatorAsNewRecord.for(model) }
 
       it "defines #new_record? with true" do
@@ -141,10 +211,18 @@ module PrimeService
       end
 
       it "also works when .load_data is not called" do
+        class TestAggregatorWithoutLoadData < described_class
+        end
         expect { TestAggregatorWithoutLoadData.new }.not_to raise_error
       end
 
       context "with an inherited aggregator that calls super in .load_data" do
+        class InheritedTestAggregatorWithSuper < TestAggregator
+          load_data :loaded_only_here do
+            super()
+            self.loaded_only_here = model.attr_2
+          end
+        end
         let(:aggregator) { InheritedTestAggregatorWithSuper.for(model) }
 
         it "loads the data for the base class" do
@@ -158,6 +236,12 @@ module PrimeService
 
       context "with an inherited aggregator that does not call super in "\
               ".load_data" do
+        class InheritedTestAggregatorWithoutSuper < TestAggregator
+          load_data :loaded_only_here do
+            self.loaded_only_here = model.attr_2
+          end
+        end
+
         let(:aggregator) { InheritedTestAggregatorWithoutSuper.for(model) }
 
         it "defines the attribute accessors for the data of the base class "\

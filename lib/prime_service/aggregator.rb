@@ -1,61 +1,105 @@
 module PrimeService
   class Aggregator < Base
-    def self.delegate_attr(model, *attrs)
-      attrs.each do |attribute|
-        define_method attribute do
-          send(model).send(attribute)
+    class << self
+      def delegate_accessor(model, *attrs)
+        mod = Module.new
+        mod.module_exec do
+          attrs.each do |attribute|
+            define_method attribute do
+              send(model).send(attribute)
+            end
+
+            setter_name = "#{attribute}="
+            define_method setter_name do |value|
+              send(model).send(setter_name, value)
+            end
+          end
         end
 
-        setter_name = "#{attribute}="
-        define_method setter_name do |value|
-          send(model).send(setter_name, value)
+        include mod
+      end
+      alias_method :delegate_attr, :delegate_accessor
+
+
+      def delegate_reader(model, *attrs)
+        mod = Module.new
+        mod.module_exec do
+          attrs.each do |attribute|
+            define_method attribute do
+              send(model).send(attribute)
+            end
+          end
+        end
+
+        include mod
+      end
+
+
+      def delegate_writer(model, *attrs)
+        mod = Module.new
+        mod.module_exec do
+          attrs.each do |attribute|
+            setter_name = "#{attribute}="
+            define_method setter_name do |value|
+              send(model).send(setter_name, value)
+            end
+          end
+        end
+
+        include mod
+      end
+
+
+      def delegate_record_id(model)
+        define_method :id do
+          send(model).id
+        end
+
+        define_method :to_key do
+          send(model).to_key
+        end
+
+        define_method :to_param do
+          send(model).to_param
+        end
+
+        define_method :to_model do
+          send(model).to_model
+        end
+
+        define_method :new_record? do
+          send(model).new_record?
+        end
+
+        define_method :persisted? do
+          send(model).persisted?
         end
       end
-    end
 
 
-    def self.delegate_record_id(model)
-      define_method :id do
-        send(model).id
+      def define_as_new_record
+        define_method :new_record? do
+          true
+        end
+
+        define_method :persisted? do
+          false
+        end
       end
 
-      define_method :to_key do
-        send(model).to_key
+
+      def load_data(*attrs, &block)
+        attr_accessor *attrs
+
+        define_method :load_data, &block
       end
 
-      define_method :to_param do
-        send(model).to_param
+
+      private
+
+      def delegator_module
+        @_delegator_module ||= Module.new
       end
-
-      define_method :to_model do
-        send(model).to_model
-      end
-
-      define_method :new_record? do
-        send(model).new_record?
-      end
-
-      define_method :persisted? do
-        send(model).persisted?
-      end
-    end
-
-
-    def self.define_as_new_record
-      define_method :new_record? do
-        true
-      end
-
-      define_method :persisted? do
-        false
-      end
-    end
-
-
-    def self.load_data(*attrs, &block)
-      attr_accessor *attrs
-
-      define_method :load_data, &block
     end
 
 
