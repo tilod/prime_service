@@ -2,7 +2,15 @@ require 'spec_helper'
 
 module PrimeService
   class TestQuery < Query
+    scope_with [:foo]
+  end
+
+  class TestQueryWithSymbolScope < Query
     scope_with :foo
+  end
+
+  class TestQueryWithStringScope < Query
+    scope_with "foo"
   end
 
 
@@ -13,8 +21,34 @@ module PrimeService
   describe Query do
     describe "query with default scope" do
       describe ".scope_with" do
-        it "assigns the :default_scope" do
-          expect(TestQuery.new.default_scope).to eq :foo
+        context "when called with a symbol" do
+          it "defines an attribute reader of this name" do
+            expect(TestQueryWithSymbolScope.new(:test_foo).foo).to eq :test_foo
+          end
+
+          it "defines an attribute writer of this name" do
+            query = TestQueryWithSymbolScope.new(:test_foo)
+            expect { query.foo = :new_foo }.to change { query.foo }
+            .from(:test_foo).to(:new_foo)
+          end
+        end
+
+        context "when called with a string" do
+          it "defines an attribute reader of this name" do
+            expect(TestQueryWithStringScope.new(:test_foo).foo).to eq :test_foo
+          end
+
+          it "defines an attribute writer of this name" do
+            query = TestQueryWithStringScope.new(:test_foo)
+            expect { query.foo = :new_foo }.to change { query.foo }
+            .from(:test_foo).to(:new_foo)
+          end
+        end
+
+        context "when called with something else" do
+          it "assigns the #default_scope" do
+            expect(TestQuery.new.default_scope).to eq [:foo]
+          end
         end
       end
 
@@ -23,7 +57,7 @@ module PrimeService
 
         describe "#initialize" do
           it "assigns the default scope as scope" do
-            expect(test_query.scope).to eq :foo
+            expect(test_query.scope).to eq [:foo]
           end
         end
       end
@@ -37,7 +71,7 @@ module PrimeService
           end
 
           it "leaves the default scope" do
-            expect(test_query.default_scope).to eq :foo
+            expect(test_query.default_scope).to eq [:foo]
           end
         end
       end
@@ -52,24 +86,52 @@ module PrimeService
 
     describe "policy without initializer params" do
       context "when initialized without scope" do
-        let(:test_query) { TestQueryWithoutDefaultScope.new }
+        let(:query) { TestQueryWithoutDefaultScope.new }
 
         it "raises an error on initialization" do
-          expect { test_query }.to raise_error Query::NoScopeError
+          expect { query }.to raise_error Query::NoScopeError
         end
       end
 
       context "when initialized with scope" do
-        let(:test_query) { TestQueryWithoutDefaultScope.new(:baz) }
+        let(:query) { TestQueryWithoutDefaultScope.new(:baz) }
 
         it "works just fine" do
-          expect(test_query.scope).to eq :baz
+          expect(query.scope).to eq :baz
         end
 
         it "returns nil as default scope" do
-          expect(test_query.default_scope).to be_nil
+          expect(query.default_scope).to be_nil
         end
       end
+    end
+
+
+    describe "policy with symbol or string default scope" do
+      context "when initialized without scope" do
+        let(:query_symbol) { TestQueryWithSymbolScope.new }
+        let(:query_string) { TestQueryWithStringScope.new }
+
+        it "raises an error on initialization" do
+          expect { query_symbol }.to raise_error Query::NoScopeError
+          expect { query_string }.to raise_error Query::NoScopeError
+        end
+      end
+
+        context "when initialized with scope" do
+          let(:query_symbol) { TestQueryWithSymbolScope.new(:test_symbol) }
+          let(:query_string) { TestQueryWithStringScope.new(:test_string) }
+
+          it "works just fine" do
+            expect(query_symbol.foo).to eq :test_symbol
+            expect(query_string.foo).to eq :test_string
+          end
+
+          it "returns the nil as default scope" do
+            expect(query_symbol.default_scope).to be_nil
+            expect(query_string.default_scope).to be_nil
+          end
+        end
     end
   end
 end

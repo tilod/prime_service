@@ -4,8 +4,13 @@ module PrimeService
 
 
     def self.scope_with(default_scope)
-      define_method :default_scope do
-        default_scope
+      if default_scope.kind_of?(Symbol) || default_scope.kind_of?(String)
+        alias_method default_scope,       :scope
+        alias_method "#{default_scope}=", :scope=
+      else
+        define_method :default_scope do
+          default_scope
+        end
       end
     end
 
