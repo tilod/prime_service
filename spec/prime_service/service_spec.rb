@@ -1,34 +1,44 @@
-require "spec_helper"
+require 'spec_helper'
 
 module PrimeService
   class TestService < Service
-    call_with :foo, :bar
+    call_with :test_arg
+
+    def call
+      '#call called with ' + test_arg
+    end
   end
 
+  class MockedTestService < Service
+    call_with :test_arg
 
-  class TestService < Service
+    def self.for(test_arg)
+      ->() { '.for called with ' + test_arg }
+    end
+  end
+
+  class EmptyTestService < Service
     call_with :test_arg
   end
 
 
   describe Service do
-    describe ".call" do
-      it "initializes the service with the factory method and calls it" do
-        service_double = instance_double Service
-        expect(TestService).to receive(:for).with("test_value")
-                           .and_return(service_double)
-        expect(service_double).to receive(:call)
+    describe '.call' do
+      it 'initializes the service with the factory method' do
+        MockedTestService.call('foo').must_equal '.for called with foo'
+      end
 
-        TestService.call("test_value")
+      it '...and calls it' do
+        TestService.call('foo').must_equal '#call called with foo'
       end
     end
 
 
-    describe "#call" do
-      let(:service) { TestService.for("test_value") }
+    describe '#call' do
+      let(:service) { EmptyTestService.for('foo') }
 
-      it "has a fallback #call method that does nothing" do
-        expect(service.call).to be_nil
+      it 'has a fallback #call method that does nothing' do
+        service.call.must_be_nil
       end
     end
   end

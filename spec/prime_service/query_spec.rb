@@ -10,7 +10,7 @@ module PrimeService
   end
 
   class TestQueryWithStringScope < Query
-    scope_with "foo"
+    scope_with 'foo'
   end
 
 
@@ -19,117 +19,119 @@ module PrimeService
 
 
   describe Query do
-    describe "query with default scope" do
-      describe ".scope_with" do
-        context "when called with a symbol" do
-          it "defines an attribute reader of this name" do
-            expect(TestQueryWithSymbolScope.new(:test_foo).foo).to eq :test_foo
+    describe 'query with default scope' do
+      describe '.scope_with' do
+        describe 'when called with a symbol' do
+          let(:query) { TestQueryWithSymbolScope.new(:test_foo) }
+
+          it 'defines an attribute reader of this name' do
+            query.foo.must_equal :test_foo
           end
 
-          it "defines an attribute writer of this name" do
-            query = TestQueryWithSymbolScope.new(:test_foo)
-            expect { query.foo = :new_foo }.to change { query.foo }
-            .from(:test_foo).to(:new_foo)
-          end
-        end
-
-        context "when called with a string" do
-          it "defines an attribute reader of this name" do
-            expect(TestQueryWithStringScope.new(:test_foo).foo).to eq :test_foo
-          end
-
-          it "defines an attribute writer of this name" do
-            query = TestQueryWithStringScope.new(:test_foo)
-            expect { query.foo = :new_foo }.to change { query.foo }
-            .from(:test_foo).to(:new_foo)
+          it 'defines an attribute writer of this name' do
+            query.foo = :new_foo
+            query.foo.must_equal :new_foo
           end
         end
 
-        context "when called with something else" do
-          it "assigns the #default_scope" do
-            expect(TestQuery.new.default_scope).to eq [:foo]
+        describe 'when called with a string' do
+          let(:query) { TestQueryWithStringScope.new(:test_foo) }
+
+          it 'defines an attribute reader of this name' do
+            query.foo.must_equal :test_foo
+          end
+
+          it 'defines an attribute writer of this name' do
+            query.foo = :new_foo
+            query.foo.must_equal :new_foo
           end
         end
-      end
 
-      context "when no scope is passed" do
-        let(:test_query) { TestQuery.new }
-
-        describe "#initialize" do
-          it "assigns the default scope as scope" do
-            expect(test_query.scope).to eq [:foo]
+        describe 'when called with something else' do
+          it 'assigns the #default_scope' do
+            TestQuery.new.default_scope.must_equal [:foo]
           end
         end
       end
 
-      context "when scope is passed" do
-        let(:test_query) { TestQuery.for(:bar) }
+      describe 'when no scope is passed' do
+        let(:query) { TestQuery.new }
 
-        describe "#initialize" do
-          it "assigns the passed scope as scope" do
-            expect(test_query.scope).to eq :bar
-          end
-
-          it "leaves the default scope" do
-            expect(test_query.default_scope).to eq [:foo]
+        describe '#initialize' do
+          it 'assigns the default scope as scope' do
+            query.scope.must_equal [:foo]
           end
         end
       end
 
-      it "defines an attribute writer for :scope" do
+      describe 'when scope is passed' do
+        let(:query) { TestQuery.for(:bar) }
+
+        describe '#initialize' do
+          it 'assigns the passed scope as scope' do
+            query.scope.must_equal :bar
+          end
+
+          it 'leaves the default scope' do
+            query.default_scope.must_equal [:foo]
+          end
+        end
+      end
+
+      it 'defines an attribute writer for :scope' do
         query = TestQuery.new
         query.scope = :bar
-        expect(query.scope).to eq :bar
+        query.scope.must_equal :bar
       end
     end
 
 
-    describe "policy without initializer params" do
-      context "when initialized without scope" do
+    describe 'query without initializer params' do
+      describe 'when initialized without scope' do
         let(:query) { TestQueryWithoutDefaultScope.new }
 
-        it "raises an error on initialization" do
-          expect { query }.to raise_error Query::NoScopeError
+        it 'raises an error on initialization' do
+          ->{ query }.must_raise Query::NoScopeError
         end
       end
 
-      context "when initialized with scope" do
+      describe 'when initialized with scope' do
         let(:query) { TestQueryWithoutDefaultScope.new(:baz) }
 
-        it "works just fine" do
-          expect(query.scope).to eq :baz
+        it 'works just fine' do
+          query.scope.must_equal :baz
         end
 
-        it "returns nil as default scope" do
-          expect(query.default_scope).to be_nil
+        it 'returns nil as default scope' do
+          query.default_scope.must_be_nil
         end
       end
     end
 
 
-    describe "policy with symbol or string default scope" do
-      context "when initialized without scope" do
+    describe 'query with symbol or string default scope' do
+      describe 'when initialized without scope' do
         let(:query_symbol) { TestQueryWithSymbolScope.new }
         let(:query_string) { TestQueryWithStringScope.new }
 
-        it "raises an error on initialization" do
-          expect { query_symbol }.to raise_error Query::NoScopeError
-          expect { query_string }.to raise_error Query::NoScopeError
+        it 'raises an error on initialization' do
+          ->{ query_symbol }.must_raise Query::NoScopeError
+          ->{ query_string }.must_raise Query::NoScopeError
         end
       end
 
-        context "when initialized with scope" do
+        describe 'when initialized with scope' do
           let(:query_symbol) { TestQueryWithSymbolScope.new(:test_symbol) }
           let(:query_string) { TestQueryWithStringScope.new(:test_string) }
 
-          it "works just fine" do
-            expect(query_symbol.foo).to eq :test_symbol
-            expect(query_string.foo).to eq :test_string
+          it 'works just fine' do
+            query_symbol.foo.must_equal :test_symbol
+            query_string.foo.must_equal :test_string
           end
 
-          it "returns the nil as default scope" do
-            expect(query_symbol.default_scope).to be_nil
-            expect(query_string.default_scope).to be_nil
+          it 'returns the nil as default scope' do
+            query_symbol.default_scope.must_be_nil
+            query_string.default_scope.must_be_nil
           end
         end
     end
