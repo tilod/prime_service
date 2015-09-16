@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'test_helper'
 
 module PrimeService
   describe Policy do
