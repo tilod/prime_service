@@ -29,45 +29,51 @@ module PrimeService
 
 
     describe 'class with initializer params' do
-      let(:base_class) { TestClass.for('foo value', 'bar value') }
+      let(:base) { TestClass.for('foo value', 'bar value') }
 
       describe '.call_with' do
         it 'defines attribute readers for the call params' do
-          base_class.must_respond_to :foo
-          base_class.must_respond_to :bar
+          base.must_respond_to :foo
+          base.must_respond_to :bar
         end
 
         it 'defines attribute writers for the call params' do
-          base_class.foo = 'new foo'
-          base_class.foo.must_equal 'new foo'
+          base.foo = 'new foo'
+          base.foo.must_equal 'new foo'
         end
       end
 
       describe '#initialize' do
         it 'assigns the params to instance variables' do
-          base_class.foo.must_equal 'foo value'
-          base_class.bar.must_equal 'bar value'
+          base.foo.must_equal 'foo value'
+          base.bar.must_equal 'bar value'
+        end
+
+        it 'may be called with less params then defined with .call_with' do
+          base = TestClass.for('foo value')
+          base.foo.must_equal 'foo value'
+          base.bar.must_be_nil
         end
       end
     end
 
 
     describe 'class without initializer params' do
-      let(:base_class) { TestClassWithoutParams.new }
+      let(:base) { TestClassWithoutParams.new }
 
       it 'works' do
-        base_class.must_be_kind_of TestClassWithoutParams
+        base.must_be_kind_of TestClassWithoutParams
       end
     end
 
 
     describe 'class with a factory which does the same as the default' do
-      let(:base_class) { TestClassWithFactory.for(:subclass_1, :bar) }
+      let(:base) { TestClassWithFactory.for(:subclass_1, :bar) }
 
 
       describe '.for' do
         it 'calls the factory method defined by .factory' do
-          base_class.must_be_kind_of TestClassWithFactory::TestSubclassOne
+          base.must_be_kind_of TestClassWithFactory::TestSubclassOne
         end
       end
     end
