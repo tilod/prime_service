@@ -6,7 +6,12 @@ module PrimeService
 
 
     def run(action_class, *params, as: :action)
-      present(action_class, *params, as: as).call
+      action = present(action_class, *params, as: as)
+      result = action.call
+
+      yield result if block_given?
+
+      result
     end
   end
 end

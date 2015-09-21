@@ -24,10 +24,17 @@ module PrimeService
       end
 
       def update
-        if run TestUpdateAction, 'foo value'
-          # when successful
-        else
-          # when failure
+        run TestUpdateAction, 'foo value' do |success|
+          @action_returned = success
+
+          # in a real controller most of the time you will do:
+          #
+          # if success
+          #   flash.notice = 'successful updated whatever'
+          #   redirect_to test_index_url
+          # else
+          #   render 'edit'
+          # end
         end
       end
     end
@@ -63,17 +70,24 @@ module PrimeService
 
 
     describe '#run' do
+      let(:action) { controller.instance_variable_get(:@action) }
+
       it 'initializes the action and calls it' do
         controller.update
-        controller.instance_variable_get(:@action).was_called.must_equal true
+        action.was_called.must_equal true
       end
 
       it 'passes the params to the action' do
         controller.update
-        controller.instance_variable_get(:@action).foo.must_equal 'foo value'
+        action.foo.must_equal 'foo value'
       end
 
-      it 'return what the action returns' do
+      it 'yields the return value of Action#call' do
+        controller.update
+        controller.instance_variable_get(:@action_returned).must_equal 'called'
+      end
+
+      it 'returns what the action returns (also: runs without block defined)' do
         controller.run(TestUpdateAction, 'foo value').must_equal 'called'
       end
     end
