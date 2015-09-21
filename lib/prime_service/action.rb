@@ -1,20 +1,26 @@
 module PrimeService
   class Action < Service
-    attr_accessor :model, :form
+    attr_accessor :model
 
 
     def self.use_form(form_class)
-      define_method :_set_form do
+      attr_accessor :form
+
+      define_method :set_form do
         self.form = form_class.new(model)
+      end
+
+      define_method :errors do
+        form.errors
       end
     end
 
 
     def initialize(*)
       super
-      
+
       setup
-      _set_form
+      set_form
     end
 
 
@@ -23,7 +29,7 @@ module PrimeService
     def setup
     end
 
-    def _set_form
+    def set_form
     end
   end
 end

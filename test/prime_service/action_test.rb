@@ -7,6 +7,10 @@ module PrimeService
       def initialize(model)
         @model = model
       end
+
+      def errors
+        'form_errors'
+      end
     end
 
     class TestAction < Action
@@ -37,11 +41,6 @@ module PrimeService
       action.model.must_equal 'test_model'
     end
 
-    it 'defines an attr_accessor for :form' do
-      action.form = 'test_form'
-      action.form.must_equal 'test_form'
-    end
-
     it 'runs the private #setup method after initialize' do
       action.model.must_equal 'model_loaded_in_setup'
     end
@@ -52,12 +51,36 @@ module PrimeService
 
 
     describe '.use_form' do
+      it 'defines an attr_accessor for :form' do
+        action.form = 'test_form'
+        action.form.must_equal 'test_form'
+      end
+
       it 'initializes the form of the action after #setup' do
         action.form.must_be_kind_of TestForm
       end
 
       it '...and passes the model' do
         action.form.model.must_equal 'model_loaded_in_setup'
+      end
+
+      it 'delegates #errors to the form' do
+        action.errors.must_equal action.form.errors
+      end
+
+
+      describe 'when .use_form is not used' do
+        let(:action) { TestActionNoSetup.for('arg') }
+
+        it 'does NOT define #form and #form=' do
+          action.wont_respond_to :form
+          action.wont_respond_to :form=
+        end
+
+        it 'does NOT delegate errors to form (actually do NOT respond to '\
+           '#errors)' do
+          action.wont_respond_to :errors
+        end
       end
     end
   end
