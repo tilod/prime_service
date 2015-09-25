@@ -3,10 +3,11 @@ require 'test_helper'
 module PrimeService
   describe Aggregator do
     class TestAggregator < Aggregator
-      call_with          :model
-      delegate_record_id :model
+      call_with     :model
+      pretend_model :model
 
-      load_data :loaded_from_model do
+      attr_accessor :loaded_from_model
+      def setup
         self.loaded_from_model = model.attr_1
       end
 
@@ -130,7 +131,7 @@ module PrimeService
     end
 
 
-    describe '.delegate_record_id' do
+    describe '.pretend_model (with argument)' do
       let(:model) {
         mock = MiniTest::Mock.new
         mock.expect(:attr_1, 'attr_1')
@@ -174,10 +175,10 @@ module PrimeService
     end
 
 
-    describe '.define_as_new_record' do
+    describe '.pretend_model (without argument)' do
       class TestAggregatorAsNewRecord < Aggregator
         call_with :model
-        define_as_new_record
+        pretend_model
       end
       let(:aggregator) { TestAggregatorAsNewRecord.for(model) }
 
@@ -207,30 +208,22 @@ module PrimeService
     end
 
 
-    describe '.load_data' do
-      it 'defines readers for all passed attributes' do
-        aggregator.must_respond_to :loaded_from_model
-      end
-
-      it 'defines writers for all passed attributes' do
-        aggregator.loaded_from_model = :new_foo
-        aggregator.loaded_from_model.must_equal :new_foo
-      end
-
-      it 'makes the block to be called by the initializer' do
+    describe '#setup' do
+      it 'gets called by the initializer' do
         aggregator.loaded_from_model.must_equal :foo
       end
 
-      it 'also works when .load_data is not called' do
+      it 'also works when #setup is not defined' do
         class TestAggregatorWithoutLoadData < Aggregator
         end
 
         TestAggregatorWithoutLoadData.new.must_be_kind_of Aggregator
       end
 
-      describe 'with an inherited aggregator that calls super in .load_data' do
+      describe 'with an inherited aggregator that calls super in #setup' do
         class InheritedTestAggregatorWithSuper < TestAggregator
-          load_data :loaded_only_here do
+          attr_accessor :loaded_only_here
+          def setup
             super()
             self.loaded_only_here = model.attr_2
           end
@@ -247,9 +240,10 @@ module PrimeService
       end
 
       describe 'with an inherited aggregator that does not call super in '\
-               '.load_data' do
+               '#setup' do
         class InheritedTestAggregatorWithoutSuper < TestAggregator
-          load_data :loaded_only_here do
+          attr_accessor :loaded_only_here
+          def setup
             self.loaded_only_here = model.attr_2
           end
         end

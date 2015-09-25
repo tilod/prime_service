@@ -50,40 +50,39 @@ module PrimeService
       end
 
 
-      def delegate_record_id(model)
-        define_method :id do
-          send(model).id
-        end
+      def pretend_model(model = false)
+        if model
+          define_method :id do
+            send(model).id
+          end
 
-        define_method :to_key do
-          send(model).to_key
-        end
+          define_method :to_key do
+            send(model).to_key
+          end
 
-        define_method :to_param do
-          send(model).to_param
-        end
+          define_method :to_param do
+            send(model).to_param
+          end
 
-        define_method :to_model do
-          send(model).to_model
-        end
+          define_method :to_model do
+            send(model).to_model
+          end
 
-        define_method :new_record? do
-          send(model).new_record?
-        end
+          define_method :new_record? do
+            send(model).new_record?
+          end
 
-        define_method :persisted? do
-          send(model).persisted?
-        end
-      end
+          define_method :persisted? do
+            send(model).persisted?
+          end
+        else
+          define_method :new_record? do
+            true
+          end
 
-
-      def define_as_new_record
-        define_method :new_record? do
-          true
-        end
-
-        define_method :persisted? do
-          false
+          define_method :persisted? do
+            false
+          end
         end
       end
 
@@ -91,7 +90,7 @@ module PrimeService
       def load_data(*attrs, &block)
         attr_accessor *attrs
 
-        define_method :load_data, &block
+        define_method :setup, &block
       end
 
 
@@ -105,13 +104,13 @@ module PrimeService
 
     def initialize(*)
       super
-      load_data
+      setup
     end
 
 
     private
 
-    def load_data
+    def setup
     end
   end
 end
