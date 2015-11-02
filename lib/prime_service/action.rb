@@ -7,18 +7,22 @@ module PrimeService
       attr_accessor :form
       private       :form=
 
-      define_method :set_form do
-        self.form =
-          if block_given?
-            Class.new(form_class, &block).new(model)
-          else
-            form_class.new(model)
-          end
+      mod = Module.new do
+        define_method :set_form do
+          self.form =
+            if block_given?
+              Class.new(form_class, &block).new(model)
+            else
+              form_class.new(model)
+            end
+        end
+
+        define_method :errors do
+          form.errors
+        end
       end
 
-      define_method :errors do
-        form.errors
-      end
+      self.include mod
     end
 
 
