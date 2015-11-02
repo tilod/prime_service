@@ -3,11 +3,17 @@ module PrimeService
     attr_accessor :model
 
 
-    def self.use_form(form_class)
+    def self.use_form(form_class, &block)
       attr_accessor :form
+      private       :form=
 
       define_method :set_form do
-        self.form = form_class.new(model)
+        self.form =
+          if block_given?
+            Class.new(form_class, &block).new(model)
+          else
+            form_class.new(model)
+          end
       end
 
       define_method :errors do

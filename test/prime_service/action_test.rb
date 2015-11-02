@@ -28,6 +28,16 @@ module PrimeService
       call_with :arg
     end
 
+    class TestActionWithBlockForm < Action
+      call_with :arg
+
+      use_form TestForm do
+        def inherited_from_test_form?
+          self.class.ancestors.include? TestForm
+        end
+      end
+    end
+
     let(:action) { TestAction.for('arg_1', 'arg_2') }
 
 
@@ -51,11 +61,6 @@ module PrimeService
 
 
     describe '.use_form' do
-      it 'defines an attr_accessor for :form' do
-        action.form = 'test_form'
-        action.form.must_equal 'test_form'
-      end
-
       it 'initializes the form of the action after #setup' do
         action.form.must_be_kind_of TestForm
       end
@@ -80,6 +85,14 @@ module PrimeService
         it 'does NOT delegate errors to form (actually do NOT respond to '\
            '#errors)' do
           action.wont_respond_to :errors
+        end
+      end
+
+      describe 'when .use_form is called with a block' do
+        let(:action) { TestActionWithBlockForm.for('arg') }
+
+        it 'inherits from the passed form class with the passed block' do
+          action.form.inherited_from_test_form?.must_equal true
         end
       end
     end
