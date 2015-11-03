@@ -21,6 +21,7 @@ module PrimeService
 
       def setup
         self.model = 'model_loaded_in_setup'
+        self.form  = initialize_form(model)
       end
     end
 
@@ -35,6 +36,12 @@ module PrimeService
         def inherited_from_test_form?
           self.class.ancestors.include? TestForm
         end
+      end
+
+      private
+
+      def setup
+        self.form = initialize_form('nothing')
       end
     end
 
@@ -61,11 +68,12 @@ module PrimeService
 
 
     describe '.use_form' do
-      it 'initializes the form of the action after #setup' do
+      it 'defines #initialize_form to call in #setup' do
         action.form.must_be_kind_of TestForm
       end
 
-      it '...and passes the model' do
+      it 'makes #initialize_form to pass the model to the initializer of the '\
+         'form' do
         action.form.model.must_equal 'model_loaded_in_setup'
       end
 

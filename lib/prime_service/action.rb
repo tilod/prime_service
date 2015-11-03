@@ -8,12 +8,12 @@ module PrimeService
       private       :form=
 
       mod = Module.new do
-        define_method :set_form do
+        define_method :initialize_form do |*args|
           self.form =
             if block_given?
-              Class.new(form_class, &block).new(model)
+              Class.new(form_class, &block).new(*args)
             else
-              form_class.new(model)
+              form_class.new(*args)
             end
         end
 
@@ -30,16 +30,12 @@ module PrimeService
       super
 
       setup
-      set_form
     end
 
 
     private
 
     def setup
-    end
-
-    def set_form
     end
   end
 end
