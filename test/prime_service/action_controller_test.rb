@@ -25,6 +25,8 @@ module PrimeService
     class TestController
       include ActionController
 
+      attr_reader :action_returned
+
       def new
         assign TestUpdateAction.for('foo', 'bar'), as: :@create_action
       end
@@ -104,8 +106,7 @@ module PrimeService
 
       it 'yields the return value of Action#call' do
         controller.update
-        controller.instance_variable_get(:@action_returned)
-                  .must_equal 'called with: params'
+        controller.action_returned.must_equal 'called with: params'
       end
 
       it 'returns what the action returns (this test also: runs without block '\
@@ -129,7 +130,7 @@ module PrimeService
         controller.instance_variable_get(:@destroy_action).must_equal action
       end
 
-      it 'does NOT pass any args to #submit' do
+      it 'calls #submit without arguments' do
         controller.destroy
         action.submit_was_called_with.must_equal []
       end
