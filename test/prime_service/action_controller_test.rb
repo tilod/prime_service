@@ -12,6 +12,16 @@ module PrimeService
       end
     end
 
+    class TestDestroyAction < Action
+      call_with :foo
+
+      attr_reader :submit_was_called_with
+      def submit(*params)
+        @submit_was_called_with = params
+        'destroy action was called'
+      end
+    end
+
     class TestController
       include ActionController
 
@@ -46,6 +56,10 @@ module PrimeService
         submit 'params' do |success|
           @action_returned = success
         end
+      end
+
+      def destroy
+        run TestDestroyAction.for('foo')
       end
     end
 
@@ -98,6 +112,26 @@ module PrimeService
          'defined)' do
         controller.assign TestUpdateAction.for('foo', 'bar')
         controller.submit('params').must_equal 'called with: params'
+      end
+    end
+
+
+    describe '#run' do
+      let(:action) { controller.instance_variable_get(:@action) }
+
+      it 'initializes the action (via #assign) and calls #submit' do
+        controller.destroy.must_equal 'destroy action was called'
+      end
+
+      it 'passes the :as argument to #assign' do
+        action = TestDestroyAction.for('foo')
+        controller.run(action, as: :@destroy_action)
+        controller.instance_variable_get(:@destroy_action).must_equal action
+      end
+
+      it 'does NOT pass any args to #submit' do
+        controller.destroy
+        action.submit_was_called_with.must_equal []
       end
     end
   end
