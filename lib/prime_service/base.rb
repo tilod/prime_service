@@ -1,11 +1,11 @@
 module PrimeService
   class Base
-    def self.call_with(*call_params)
-      define_method :_call_params_ do
-        call_params
+    def self.call_with(*call_args)
+      define_method :call_args do
+        call_args
       end
 
-      call_params.each do |param|
+      call_args.each do |param|
         attr_accessor param
       end
     end
@@ -17,15 +17,13 @@ module PrimeService
 
 
     def initialize(*params)
-      _call_params_.each_with_index do |attribute, index|
+      call_args.each_with_index do |attribute, index|
         instance_variable_set "@#{attribute}", params[index]
       end
     end
 
 
-    private
-
-    def _call_params_
+    def call_args
       []
     end
   end

@@ -5,26 +5,24 @@ module PrimeService
     class TestUpdateAction < Action
       call_with :foo, :bar
 
-      attr_reader :was_called
-      def call
-        @was_called = true
-        'called'
+      attr_reader :submit_was_called_with
+      def submit(params)
+        @submit_was_called_with = params
+        "called with: #{params}"
       end
     end
 
     class TestController
       include ActionController
 
-      def show
-        present TestUpdateAction, as: :show_action
+      def new
+        assign TestUpdateAction.for('foo', 'bar'), as: :@create_action
       end
 
-      def edit
-        present TestUpdateAction, 'foo value', 'bar value'
-      end
+      def create
+        assign TestUpdateAction.for('foo', 'bar'), as: :@create_action
 
-      def update
-        run TestUpdateAction, 'foo value' do |success|
+        submit 'params', to: :@create_action do |success|
           @action_returned = success
 
           # in a real controller most of the time you will do:
@@ -37,58 +35,69 @@ module PrimeService
           # end
         end
       end
+
+      def edit
+        assign TestUpdateAction.for('foo', 'bar')
+      end
+
+      def update
+        assign TestUpdateAction.for('foo', 'bar')
+
+        submit 'params' do |success|
+          @action_returned = success
+        end
+      end
     end
 
     let(:controller) { TestController.new }
 
 
-    describe '#present' do
+    describe '#assign' do
       it 'initializes the Action and assigns it to @action' do
         controller.edit
         controller.instance_variable_get(:@action)
                   .must_be_kind_of TestUpdateAction
       end
 
-      it 'allows to assign the set the name of the instance variable' do
-        controller.show
-        controller.instance_variable_get(:@show_action)
+      it 'allows to assign the set the name of the instance variable (leaving '\
+         '@action nil)' do
+        controller.new
+        controller.instance_variable_get(:@create_action)
                   .must_be_kind_of TestUpdateAction
         controller.instance_variable_get(:@action).must_be_nil
       end
 
       it 'passes the params to the action' do
         controller.edit
-        controller.instance_variable_get(:@action).foo.must_equal 'foo value'
-        controller.instance_variable_get(:@action).bar.must_equal 'bar value'
+        controller.instance_variable_get(:@action).foo.must_equal 'foo'
+        controller.instance_variable_get(:@action).bar.must_equal 'bar'
       end
 
       it 'returns the action to present' do
-        controller.present(TestUpdateAction)
+        controller.assign(TestUpdateAction.for('foo', 'bar'))
                   .must_equal controller.instance_variable_get(:@action)
       end
     end
 
 
-    describe '#run' do
+    describe '#submit' do
       let(:action) { controller.instance_variable_get(:@action) }
 
-      it 'initializes the action and calls it' do
+      it 'calls @action#submit and passes the params' do
         controller.update
-        action.was_called.must_equal true
-      end
-
-      it 'passes the params to the action' do
-        controller.update
-        action.foo.must_equal 'foo value'
+        action.submit_was_called_with.must_equal 'params'
       end
 
       it 'yields the return value of Action#call' do
         controller.update
-        controller.instance_variable_get(:@action_returned).must_equal 'called'
+        controller.instance_variable_get(:@action_returned)
+                  .must_equal 'called with: params'
       end
 
-      it 'returns what the action returns (also: runs without block defined)' do
-        controller.run(TestUpdateAction, 'foo value').must_equal 'called'
+      it 'returns what the action returns (this test also: runs without block '\
+         'defined)' do
+        controller.assign TestUpdateAction.for('foo', 'bar')
+        controller.submit('params').must_equal 'called with: params'
       end
     end
   end

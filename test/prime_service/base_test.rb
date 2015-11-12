@@ -55,6 +55,12 @@ module PrimeService
           base.bar.must_be_nil
         end
       end
+
+      describe '#call_args' do
+        it 'returns the list of arguments that must be passed to .call' do
+          base.call_args.must_equal [:foo, :bar]
+        end
+      end
     end
 
 
@@ -63,6 +69,12 @@ module PrimeService
 
       it 'works' do
         base.must_be_kind_of TestClassWithoutParams
+      end
+
+      describe '#call_args' do
+        it 'returns an empty array' do
+          base.call_args.must_equal []
+        end
       end
     end
 

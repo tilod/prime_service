@@ -1,13 +1,13 @@
 module PrimeService
   module ActionController
-    def present(action_class, *params, as: :action)
-      instance_variable_set "@#{as}", action_class.for(*params)
+    def assign(action_instance, *params, as: :@action)
+      instance_variable_set as, action_instance
     end
 
 
-    def run(action_class, *params, as: :action)
-      action = present(action_class, *params, as: as)
-      result = action.call
+    def submit(*params, to: :@action)
+      action = instance_variable_get to
+      result = action.submit(*params)
 
       yield result if block_given?
 

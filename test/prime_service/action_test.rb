@@ -48,12 +48,12 @@ module PrimeService
     let(:action) { TestAction.for('arg_1', 'arg_2') }
 
 
-    it 'is initialized like a service' do
+    it 'is initialized like PrimeService::Base' do
       action.arg_1.must_equal 'arg_1'
       action.arg_2.must_equal 'arg_2'
     end
 
-    it 'defines an attr_accessor for :model' do
+    it 'defines an attr_accessor for #model' do
       action.model = 'test_model'
       action.model.must_equal 'test_model'
     end
@@ -68,13 +68,17 @@ module PrimeService
 
 
     describe '.use_form' do
-      it 'defines #initialize_form to call in #setup' do
+      it 'defines #initialize_form (to be called in #setup)' do
         action.form.must_be_kind_of TestForm
       end
 
       it 'makes #initialize_form to pass the model to the initializer of the '\
          'form' do
         action.form.model.must_equal 'model_loaded_in_setup'
+      end
+
+      it 'defines #form_class to return... well... the form class' do
+        action.form_class.must_equal TestForm
       end
 
       it 'delegates #errors to the form' do
@@ -85,13 +89,13 @@ module PrimeService
       describe 'when .use_form is not used' do
         let(:action) { TestActionNoSetup.for('arg') }
 
-        it 'does NOT define #form and #form=' do
+        it 'does NOT define #form and #form_class' do
           action.wont_respond_to :form
-          action.wont_respond_to :form=
+          action.wont_respond_to :form_class
         end
 
-        it 'does NOT delegate errors to form (actually do NOT respond to '\
-           '#errors)' do
+        it 'does NOT delegate errors to form (actually it does NOT respond to '\
+           '#errors at all)' do
           action.wont_respond_to :errors
         end
       end
@@ -99,8 +103,22 @@ module PrimeService
       describe 'when .use_form is called with a block' do
         let(:action) { TestActionWithBlockForm.for('arg') }
 
-        it 'inherits from the passed form class with the passed block' do
+        it 'inherits from the passed form class with the passed block (test '\
+           'uses #form)' do
           action.form.inherited_from_test_form?.must_equal true
+        end
+
+        it 'inherits from the passed form class with the passed block (test '\
+           'uses #form_class)' do
+          action.form_class.ancestors.must_include TestForm
+          action.form_class.wont_equal TestForm
+        end
+      end
+
+
+      describe '#submit' do
+        it 'throws a NotImplementedError' do
+          ->{ action.submit }.must_raise NotImplementedError
         end
       end
     end
