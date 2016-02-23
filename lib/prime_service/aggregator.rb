@@ -88,7 +88,7 @@ module PrimeService
 
 
       def load_data(*attrs, &block)
-        attr_accessor *attrs
+        attr_accessor(*attrs)
 
         define_method :setup, &block
       end
