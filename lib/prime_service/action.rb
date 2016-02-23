@@ -10,7 +10,7 @@ module PrimeService
       mod = Module.new do
         define_method :initialize_form do |*args|
           self.form_class =
-            if block_given?
+            if block
               Class.new(form_base_class, &block)
             else
               form_base_class
@@ -20,6 +20,18 @@ module PrimeService
 
         define_method :errors do
           form.errors
+        end
+
+        define_method :validate do |params, &block_of_validate|
+          if form.validate(params || {})   # nil might crash the form
+            if block_of_validate
+              block_of_validate.call
+            else
+              true
+            end
+          else
+            false
+          end
         end
       end
 

@@ -11,6 +11,11 @@ module PrimeService
       def errors
         'form_errors'
       end
+
+      def validate(params)
+        raise StandardError if params.nil?
+        params == 'valid params'
+      end
     end
 
     class TestAction < Action
@@ -86,6 +91,32 @@ module PrimeService
       end
 
 
+      describe 'defines #validate' do
+        it 'which yields the block when the form is valid' do
+          block_called = false
+
+          action.validate('valid params') do
+            block_called = 'block was called'
+          end
+          block_called.must_equal 'block was called'
+        end
+
+        it 'which returns false when form is NOT valid' do
+          block_called = false
+          action.validate('invalid params') do
+            block_called = 'block was called'
+          end
+          block_called.must_equal false
+        end
+
+        it 'still works when nil is passed as params (even if the form '\
+           'itself would raise an exception when form#validate is called with '\
+           'nil) ...did anybody said "Reform"?' do
+          action.validate(nil).must_equal false
+        end
+      end
+
+
       describe 'when .use_form is not used' do
         let(:action) { TestActionNoSetup.for('arg') }
 
@@ -97,6 +128,10 @@ module PrimeService
         it 'does NOT delegate errors to form (actually it does NOT respond to '\
            '#errors at all)' do
           action.wont_respond_to :errors
+        end
+
+        it 'does NOT define #validate' do
+          action.wont_respond_to :validate
         end
       end
 
