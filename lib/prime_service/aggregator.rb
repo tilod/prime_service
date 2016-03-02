@@ -50,7 +50,7 @@ module PrimeService
       end
 
 
-      def pretend_model(model = false)
+      def pretend_to_be_model(model = false)
         if model
           define_method :id do
             send(model).id

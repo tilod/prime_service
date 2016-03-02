@@ -3,8 +3,8 @@ require 'test_helper'
 module PrimeService
   describe Aggregator do
     class TestAggregator < Aggregator
-      call_with     :model
-      pretend_model :model
+      call_with           :model
+      pretend_to_be_model :model
 
       attr_accessor :loaded_from_model
       def setup
@@ -131,7 +131,7 @@ module PrimeService
     end
 
 
-    describe '.pretend_model (with argument)' do
+    describe '.pretend_to_be_model (with argument)' do
       let(:model) {
         mock = MiniTest::Mock.new
         mock.expect(:attr_1, 'attr_1')
@@ -175,10 +175,10 @@ module PrimeService
     end
 
 
-    describe '.pretend_model (without argument)' do
+    describe '.pretend_to_be_model (without argument)' do
       class TestAggregatorAsNewRecord < Aggregator
         call_with :model
-        pretend_model
+        pretend_to_be_model
       end
       let(:aggregator) { TestAggregatorAsNewRecord.for(model) }
 
