@@ -31,7 +31,7 @@ module PrimeService
     describe 'class with initializer params' do
       let(:base) { TestClass.for('foo value', 'bar value') }
 
-      describe '.call_with' do
+      describe '`call_with`' do
         it 'defines attribute readers for the call params' do
           base.must_respond_to :foo
           base.must_respond_to :bar
@@ -79,12 +79,11 @@ module PrimeService
     end
 
 
-    describe 'class with a factory which does the same as the default' do
+    describe 'class with a factory' do
       let(:base) { TestClassWithFactory.for(:subclass_1, :bar) }
 
-
       describe '.for' do
-        it 'calls the factory method defined by .factory' do
+        it 'calls the factory to create the instance' do
           base.must_be_kind_of TestClassWithFactory::TestSubclassOne
         end
       end
