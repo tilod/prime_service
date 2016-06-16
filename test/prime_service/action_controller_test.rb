@@ -88,7 +88,7 @@ module PrimeService
         controller.new
         controller.instance_variable_get(:@create_action)
                   .must_be_kind_of TestUpdateAction
-        controller.instance_variable_get(:@action).must_be_nil
+        controller.instance_eval { defined? @action }.must_be_nil
       end
 
       it 'returns the action' do
